@@ -147,6 +147,7 @@ export async function runAgent(
     });
 
     if (step.status === "complete") {
+      await cb.refetchProject();
       cb.onStep({ index: idx, label: "Done", status: "done", observed: step.message });
       cb.onStatus("complete");
       await speak(step.message || "Done.");

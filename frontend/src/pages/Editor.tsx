@@ -213,6 +213,7 @@ export default function Editor() {
             </div>
           ) : (
             <VideoPreview
+              key={project.updated_at}
               ref={videoRef}
               src={project.preview_url}
               onTime={setCurrentTime}
