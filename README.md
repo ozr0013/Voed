@@ -113,6 +113,3 @@ writeup for full edge cases and known failure modes.
 > Note on screen capture: we use **html2canvas** (paints the DOM directly to a
 > canvas) rather than html-to-image, which hangs in some automated Chromium
 > builds because it round-trips through an SVG `<img>` that never fires `onload`.
-
-_Fill in at demo time: CPU / GPU / RAM of the host laptop, and observed model
-latency._
