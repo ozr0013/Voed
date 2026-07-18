@@ -27,6 +27,7 @@ export interface Clip {
   src_end_s: number;
   duration_s: number;
   caption_text: string | null;
+  muted?: boolean;
 }
 
 export interface ProjectSummary {
@@ -47,6 +48,7 @@ export interface ProjectDetail extends ProjectSummary {
   fps: number;
   waveform: number[] | null;
   clips: Clip[];
+  muted_ranges?: { start: number; end: number }[];
   preview_url: string | null;
 }
 

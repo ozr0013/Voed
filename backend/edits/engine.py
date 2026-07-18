@@ -51,7 +51,7 @@ def _commit_new_timeline(
     next_idx = (max((v.version_index for v in project.versions), default=0)) + 1
 
     version_file = pdir / "versions" / f"v{next_idx}.mp4"
-    ops.render_segments(original, segments, version_file)
+    ops.render_segments(original, segments, version_file, muted=project.muted_ranges or [])
 
     # preview proxy (<=720p) of the new timeline
     proxy = pdir / f"proxy_v{next_idx}.mp4"
@@ -103,49 +103,79 @@ def _commit_new_timeline(
     return version
 
 
-def apply_action(db: Session, project: Project, action: Action) -> ExecResult:
-    """Execute a single timeline action. Raises EditError on invalid edits."""
+def _clamp_range(project: Project, action: Action, what: str) -> tuple[float, float]:
+    """Validate + clamp an action's [start_s, end_s] against the timeline length."""
+    dur = ops.total_duration(_segments(project))
+    a = max(0.0, action.start_s or 0.0)
+    b = min(dur, action.end_s if action.end_s is not None else dur)
+    if b <= a:
+        raise EditError(f"{what} needs end_s greater than start_s.")
+    return a, b
+
+
+# --------------------------------------------------------------------------- #
+# Executors — one per capability. Add a new edit by writing a function here and
+# registering it below; the agent action schema + skill doc do the rest. This is
+# what lets editing grow without a new branch in a giant if/elif for every verb.
+# --------------------------------------------------------------------------- #
+def _exec_cut_range(db: Session, project: Project, action: Action) -> ExecResult:
+    a, b = _clamp_range(project, action, "cut_range")
+    new = ops.remove_interval(_segments(project), a, b)
+    v = _commit_new_timeline(db, project, new, action, f"cut {_fmt(a)}–{_fmt(b)}")
+    return ExecResult(
+        summary=f"Removed {_fmt(a)}–{_fmt(b)} ({b - a:.1f}s); "
+        f"timeline is now {ops.total_duration(new):.1f}s.",
+        timeline_changed=True,
+        version_id=v.id,
+    )
+
+
+def _exec_trim(db: Session, project: Project, action: Action) -> ExecResult:
+    a, b = _clamp_range(project, action, "trim")
+    new = ops.keep_interval(_segments(project), a, b)
+    v = _commit_new_timeline(db, project, new, action, f"trim to {_fmt(a)}–{_fmt(b)}")
+    return ExecResult(
+        summary=f"Trimmed to {_fmt(a)}–{_fmt(b)}; "
+        f"timeline is now {ops.total_duration(new):.1f}s.",
+        timeline_changed=True,
+        version_id=v.id,
+    )
+
+
+def _exec_mute_range(db: Session, project: Project, action: Action) -> ExecResult:
+    a, b = _clamp_range(project, action, "mute_range")
     segs = _segments(project)
-    dur = ops.total_duration(segs)
+    # Record the mute in SOURCE time (survives later cuts/trims), then re-render
+    # the SAME timeline with the audio silenced — length is unchanged.
+    src = [{"start": s, "end": e} for (s, e) in ops.timeline_to_source(segs, a, b)]
+    project.muted_ranges = ops.merge_intervals(list(project.muted_ranges or []) + src)
+    v = _commit_new_timeline(db, project, segs, action, f"mute {_fmt(a)}–{_fmt(b)}")
+    return ExecResult(
+        summary=f"Muted audio {_fmt(a)}–{_fmt(b)}; timeline length unchanged.",
+        timeline_changed=True,
+        version_id=v.id,
+    )
 
-    if action.name == ActionName.cut_range:
-        a = max(0.0, action.start_s or 0.0)
-        b = min(dur, action.end_s if action.end_s is not None else dur)
-        if b <= a:
-            raise EditError("cut_range needs end_s greater than start_s.")
-        new = ops.remove_interval(segs, a, b)
-        v = _commit_new_timeline(
-            db, project, new, action, f"cut {_fmt(a)}–{_fmt(b)}"
-        )
-        return ExecResult(
-            summary=f"Removed {_fmt(a)}–{_fmt(b)} ({b - a:.1f}s); "
-            f"timeline is now {ops.total_duration(new):.1f}s.",
-            timeline_changed=True,
-            version_id=v.id,
-        )
 
-    if action.name == ActionName.trim:
-        a = max(0.0, action.start_s or 0.0)
-        b = min(dur, action.end_s if action.end_s is not None else dur)
-        if b <= a:
-            raise EditError("trim needs end_s greater than start_s.")
-        new = ops.keep_interval(segs, a, b)
-        v = _commit_new_timeline(
-            db, project, new, action, f"trim to {_fmt(a)}–{_fmt(b)}"
-        )
-        return ExecResult(
-            summary=f"Trimmed to {_fmt(a)}–{_fmt(b)}; "
-            f"timeline is now {ops.total_duration(new):.1f}s.",
-            timeline_changed=True,
-            version_id=v.id,
-        )
+def _exec_seek_preview(db: Session, project: Project, action: Action) -> ExecResult:
+    return ExecResult(
+        summary=f"Moved the playhead to {_fmt(action.start_s or 0.0)}.",
+        timeline_changed=False,
+        seek_to=action.start_s or 0.0,
+    )
 
-    if action.name == ActionName.seek_preview:
-        return ExecResult(
-            summary=f"Moved the playhead to {_fmt(action.start_s or 0.0)}.",
-            timeline_changed=False,
-            seek_to=action.start_s or 0.0,
-        )
 
-    # Other actions land in later milestones.
-    raise EditError(f"Action '{action.name.value}' is not implemented yet.")
+_EXECUTORS = {
+    ActionName.cut_range: _exec_cut_range,
+    ActionName.trim: _exec_trim,
+    ActionName.mute_range: _exec_mute_range,
+    ActionName.seek_preview: _exec_seek_preview,
+}
+
+
+def apply_action(db: Session, project: Project, action: Action) -> ExecResult:
+    """Execute a single timeline action. Raises EditError on invalid/unsupported edits."""
+    handler = _EXECUTORS.get(action.name)
+    if handler is None:
+        raise EditError(f"Action '{action.name.value}' is not implemented yet.")
+    return handler(db, project, action)

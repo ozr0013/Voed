@@ -62,6 +62,39 @@ def total_duration(segments: list[Segment]) -> float:
     return sum(s.duration for s in segments)
 
 
+def timeline_to_source(
+    segments: list[Segment], a: float, b: float
+) -> list[tuple[float, float]]:
+    """Map a timeline interval [a, b] to the source (src_start, src_end) ranges it
+    covers, walking the ordered segment list. Used to record mutes in source time
+    so they survive later cuts/trims."""
+    out: list[tuple[float, float]] = []
+    if b <= a:
+        return out
+    t = 0.0
+    for seg in segments:
+        s0, s1 = t, t + seg.duration
+        lo, hi = max(a, s0), min(b, s1)
+        if hi - lo > EPS:
+            out.append((seg.src_start + (lo - s0), seg.src_start + (hi - s0)))
+        t = s1
+    return out
+
+
+def merge_intervals(intervals: list[dict]) -> list[dict]:
+    """Union a list of {"start","end"} intervals into a sorted, non-overlapping set."""
+    items = sorted(
+        (i["start"], i["end"]) for i in intervals if i.get("end", 0) - i.get("start", 0) > EPS
+    )
+    merged: list[list[float]] = []
+    for s, e in items:
+        if merged and s <= merged[-1][1] + EPS:
+            merged[-1][1] = max(merged[-1][1], e)
+        else:
+            merged.append([s, e])
+    return [{"start": s, "end": e} for s, e in merged]
+
+
 def _has_audio(src: Path) -> bool:
     try:
         out = subprocess.run(
@@ -74,13 +107,34 @@ def _has_audio(src: Path) -> bool:
         return False
 
 
-def render_segments(original: Path, segments: list[Segment], out: Path) -> None:
+def _local_mutes(
+    seg: Segment, muted: list[dict]
+) -> list[tuple[float, float]]:
+    """Muted source intervals that overlap this segment, expressed in the
+    segment's LOCAL time (0-based) after atrim resets PTS to 0."""
+    local: list[tuple[float, float]] = []
+    for m in muted:
+        ms, me = m["start"], m["end"]
+        lo, hi = max(ms, seg.src_start), min(me, seg.src_end)
+        if hi - lo > EPS:
+            local.append((lo - seg.src_start, hi - seg.src_start))
+    return local
+
+
+def render_segments(
+    original: Path,
+    segments: list[Segment],
+    out: Path,
+    muted: list[dict] | None = None,
+) -> None:
     """Extract each source segment from the original and concatenate them into a
-    single frame-accurate file (ultrafast re-encode)."""
+    single frame-accurate file (ultrafast re-encode). `muted` is a list of
+    source-time {"start","end"} intervals whose audio is silenced (video kept)."""
     out.parent.mkdir(parents=True, exist_ok=True)
     if not segments:
         raise ValueError("Cannot render an empty timeline")
 
+    muted = muted or []
     has_audio = _has_audio(original)
     parts, vlabels, alabels = [], [], []
     for i, seg in enumerate(segments):
@@ -90,9 +144,10 @@ def render_segments(original: Path, segments: list[Segment], out: Path) -> None:
         )
         vlabels.append(f"[v{i}]")
         if has_audio:
-            parts.append(
-                f"[0:a]atrim=start={s:.3f}:end={e:.3f},asetpts=PTS-STARTPTS[a{i}];"
-            )
+            achain = f"[0:a]atrim=start={s:.3f}:end={e:.3f},asetpts=PTS-STARTPTS"
+            for lo, hi in _local_mutes(seg, muted):
+                achain += f",volume=enable='between(t,{lo:.3f},{hi:.3f})':volume=0"
+            parts.append(f"{achain}[a{i}];")
             alabels.append(f"[a{i}]")
 
     n = len(segments)

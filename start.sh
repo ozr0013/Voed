@@ -71,6 +71,8 @@ VOICE="${VOICECUT_PIPER_VOICE:-en_US-lessac-medium}"
 if [ ! -f "$ROOT/models/piper/$VOICE.onnx" ]; then
   yellow "  [..] Downloading Piper voice $VOICE..."
   mkdir -p "$ROOT/models/piper"
+  # python.org macOS builds often lack system CA certs; certifi is installed via pip deps.
+  export SSL_CERT_FILE="$("$PY" -c 'import certifi; print(certifi.where())')"
   "$PY" -m piper.download_voices --download-dir "$ROOT/models/piper" "$VOICE"
 fi
 green "  [ok] Piper voice $VOICE"

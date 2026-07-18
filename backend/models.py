@@ -73,6 +73,10 @@ class Project(Base):
     transcript_status: Mapped[str] = mapped_column(String(32), default="pending")
     transcript: Mapped[list | None] = mapped_column(JSON, nullable=True)  # word-level
 
+    # muted audio regions in SOURCE seconds: [{"start": s, "end": e}, ...]. Kept
+    # in source time so they survive cuts/trims (which only reslice segments).
+    muted_ranges: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
     head_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("edit_versions.id"), nullable=True
     )
