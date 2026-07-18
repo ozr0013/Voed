@@ -42,10 +42,24 @@ if ! ollama list | grep -q "$MODEL"; then
 fi
 green "  [ok] model $MODEL"
 
-# Python venv + backend deps
+# Python venv + backend deps (3.11–3.12; piper-tts wheels are macOS-friendly on 1.3+)
+if command -v python3.12 >/dev/null 2>&1; then
+  PYTHON=python3.12
+elif command -v python3.11 >/dev/null 2>&1; then
+  PYTHON=python3.11
+else
+  PYTHON=python3
+fi
+if [ -d "$ROOT/.venv" ]; then
+  VENV_MINOR="$("$ROOT/.venv/bin/python" -c 'import sys; print(sys.version_info.minor)' 2>/dev/null || echo "")"
+  if [ "$VENV_MINOR" = "13" ] || [ "$VENV_MINOR" = "14" ]; then
+    yellow "  [..] Recreating venv ($PYTHON preferred; 3.13+ breaks piper on macOS)..."
+    rm -rf "$ROOT/.venv"
+  fi
+fi
 if [ ! -d "$ROOT/.venv" ]; then
-  echo "Creating Python venv..."
-  python3 -m venv "$ROOT/.venv"
+  echo "Creating Python venv with $PYTHON..."
+  "$PYTHON" -m venv "$ROOT/.venv"
 fi
 PY="$ROOT/.venv/bin/python"
 "$PY" -m pip install --quiet --upgrade pip
