@@ -116,4 +116,24 @@ echo
 "$PY" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 trap 'kill $BACKEND_PID 2>/dev/null || true' EXIT
+
+# Vite proxies /api to :8000 — wait until Uvicorn is listening so the first page
+# load doesn't hit ECONNREFUSED while the backend is still starting.
+echo "  Waiting for backend on :8000..."
+for _ in $(seq 1 60); do
+  if curl -sf "http://127.0.0.1:8000/api/ping" >/dev/null 2>&1; then
+    green "  [ok] backend ready"
+    break
+  fi
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    red "  [X] Backend exited during startup"
+    exit 1
+  fi
+  sleep 0.25
+done
+if ! curl -sf "http://127.0.0.1:8000/api/ping" >/dev/null 2>&1; then
+  red "  [X] Backend did not become ready on :8000"
+  exit 1
+fi
+
 (cd "$ROOT/frontend" && npm run dev -- --host)
