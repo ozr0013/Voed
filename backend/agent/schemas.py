@@ -15,16 +15,44 @@ from pydantic import BaseModel, Field
 
 
 class ActionName(str, Enum):
+    # --- structural / timeline ---
     trim = "trim"
     cut_range = "cut_range"
     mute_range = "mute_range"
     split = "split"
     remove_silence = "remove_silence"
     reorder_clips = "reorder_clips"
-    add_caption = "add_caption"
-    seek_preview = "seek_preview"
-    export = "export"
     delete_clip = "delete_clip"
+    seek_preview = "seek_preview"
+    # --- text on screen ---
+    add_caption = "add_caption"
+    add_text = "add_text"
+    add_subtitles = "add_subtitles"
+    # --- audio ---
+    change_volume = "change_volume"
+    silence_audio = "silence_audio"
+    # --- speed ---
+    change_speed = "change_speed"
+    # --- transitions / fades ---
+    fade_in = "fade_in"
+    fade_out = "fade_out"
+    # --- colour / style ---
+    grayscale = "grayscale"
+    sepia = "sepia"
+    invert_colors = "invert_colors"
+    adjust_color = "adjust_color"
+    blur = "blur"
+    sharpen = "sharpen"
+    vignette = "vignette"
+    # --- geometry ---
+    rotate = "rotate"
+    flip = "flip"
+    crop = "crop"
+    resize = "resize"
+    # --- lifecycle / meta ---
+    undo = "undo"
+    remove_effects = "remove_effects"
+    export = "export"
     ask_user = "ask_user"
     task_complete = "task_complete"
     task_failed = "task_failed"
@@ -32,11 +60,33 @@ class ActionName(str, Enum):
 
 class Action(BaseModel):
     name: ActionName
+    # ranges / timing (seconds)
     start_s: float | None = None
     end_s: float | None = None
+    duration_s: float | None = None
+    # clip targeting / ordering
     clip_id: str | None = None
     position: int | None = None
+    # text
     text: str | None = None
+    align: str | None = None      # top | center | bottom
+    size: str | None = None       # small | medium | large
+    color: str | None = None      # e.g. white, yellow, #ffcc00
+    # numeric knobs
+    factor: float | None = None       # speed / volume multiplier
+    brightness: float | None = None   # -1..1  (0 = neutral)
+    contrast: float | None = None     # 0..3   (1 = neutral)
+    saturation: float | None = None   # 0..3   (1 = neutral)
+    amount: float | None = None       # blur sigma / generic strength
+    degrees: int | None = None        # rotate: 90 | 180 | 270
+    direction: str | None = None      # flip: horizontal | vertical
+    # geometry
+    height: int | None = None         # resize target height
+    x: int | None = None
+    y: int | None = None
+    w: int | None = None
+    h: int | None = None
+    # meta
     quality: str | None = None
     question: str | None = None
 
@@ -66,9 +116,25 @@ PLANNER_JSON_SCHEMA: dict = {
                 },
                 "start_s": {"type": "number"},
                 "end_s": {"type": "number"},
+                "duration_s": {"type": "number"},
                 "clip_id": {"type": "string"},
                 "position": {"type": "integer"},
                 "text": {"type": "string"},
+                "align": {"type": "string", "enum": ["top", "center", "bottom"]},
+                "size": {"type": "string", "enum": ["small", "medium", "large"]},
+                "color": {"type": "string"},
+                "factor": {"type": "number"},
+                "brightness": {"type": "number"},
+                "contrast": {"type": "number"},
+                "saturation": {"type": "number"},
+                "amount": {"type": "number"},
+                "degrees": {"type": "integer", "enum": [90, 180, 270]},
+                "direction": {"type": "string", "enum": ["horizontal", "vertical"]},
+                "height": {"type": "integer"},
+                "x": {"type": "integer"},
+                "y": {"type": "integer"},
+                "w": {"type": "integer"},
+                "h": {"type": "integer"},
                 "quality": {"type": "string", "enum": ["1080p", "720p"]},
                 "question": {"type": "string"},
             },

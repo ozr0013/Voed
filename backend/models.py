@@ -77,6 +77,13 @@ class Project(Base):
     # in source time so they survive cuts/trims (which only reslice segments).
     muted_ranges: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
+    # Post-concat effects applied at render time, in TIMELINE seconds:
+    # [{"type": "grayscale"}, {"type": "text", "text": "...", "start_s", "end_s"},
+    #  {"type": "speed", "factor": 2.0}, {"type": "fade_out", "duration_s": 1}, ...].
+    # Colour/geometry/speed/volume/fade/caption effects all live here so the agent
+    # can grow new skills without new columns. See edits/operations.py.
+    effects: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
     head_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("edit_versions.id"), nullable=True
     )
@@ -143,6 +150,9 @@ class EditVersion(Base):
     label: Mapped[str] = mapped_column(String(255), default="")
     layout: Mapped[list | None] = mapped_column(JSON, nullable=True)  # clip snapshot
     action: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # action that made it
+    # full editing state at this version, so `undo` can restore it exactly
+    muted_snapshot: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    effects_snapshot: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     project: Mapped[Project] = relationship(

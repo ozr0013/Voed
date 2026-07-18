@@ -64,6 +64,7 @@ class ProjectDetail(ProjectSummary):
     waveform: list[float] | None = None
     clips: list[ClipOut] = []
     muted_ranges: list[dict] = []  # source-time [{"start","end"}] silenced regions
+    effects: list[dict] = []       # colour/text/speed/… effects applied at render
     preview_url: str | None = None
 
     @classmethod
@@ -81,8 +82,11 @@ class ProjectDetail(ProjectSummary):
             waveform=p.waveform,
             clips=[ClipOut.of(c, _is_muted(c)).model_dump() for c in p.clips],
             muted_ranges=muted,
+            effects=list(p.effects or []),
+            # `?v=` busts the <video> cache whenever an edit re-renders a new file
+            # (updated_at auto-bumps), so applied effects are actually visible.
             preview_url=(
-                f"/api/projects/{p.id}/media/preview"
+                f"/api/projects/{p.id}/media/preview?v={int(p.updated_at.timestamp() * 1000)}"
                 if (p.proxy_path or p.original_path)
                 else None
             ),

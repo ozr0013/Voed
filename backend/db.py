@@ -33,7 +33,8 @@ def init_db() -> None:
 # introduced nullable columns are backfilled here for databases created before
 # the column existed. (SQLite supports ADD COLUMN.)
 _ADDITIVE_COLUMNS: dict[str, dict[str, str]] = {
-    "projects": {"muted_ranges": "JSON"},
+    "projects": {"muted_ranges": "JSON", "effects": "JSON"},
+    "edit_versions": {"muted_snapshot": "JSON", "effects_snapshot": "JSON"},
 }
 
 
