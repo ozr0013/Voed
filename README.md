@@ -92,12 +92,22 @@ frontend deps on first run, starts both servers, and prints the LAN URL. Open th
 ## Build status
 
 - [x] M1 — scaffold, health checks, FastAPI + Vite wiring
-- [ ] M2 — auth + dashboard + upload
-- [ ] M3 — editor page (static)
-- [ ] M4 — STT + mic + TTS ack
-- [ ] M5 — screenshot capture + planner
-- [ ] M6 — edit engine trim/cut_range (end-to-end gate)
+- [x] M2 — auth + dashboard + upload
+- [x] M3 — editor page (static)
+- [x] M4 — STT + mic + TTS ack
+- [x] M5 — screenshot capture + planner
+- [x] **M6 — edit engine trim/cut_range (end-to-end gate PASSED)**
 - [ ] M7–M12 — multi-step loop, transcription, more edits, failure handling, evals, polish
+
+**Gate verified (M6):** spoken → live `html2canvas` screenshot → `gemma4:12b`
+planner returns `cut_range` → ffmpeg renders a real frame-accurate cut on disk →
+timeline re-renders → fresh screenshot → `gemma4:12b` verifier confirms the change
+→ spoken + on-screen ✓ confirmation → `task_complete`. Warm latency ≈ 9 s/plan,
+3.7 s/verify on the dev machine (CPU).
+
+> Note on screen capture: we use **html2canvas** (paints the DOM directly to a
+> canvas) rather than html-to-image, which hangs in some automated Chromium
+> builds because it round-trips through an SVG `<img>` that never fires `onload`.
 
 ## Hardware used
 
