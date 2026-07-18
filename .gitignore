@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+.vite/
+
+# VoiceCut runtime data
+data/
+storage/
+*.sqlite
+*.sqlite3
+*.db
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Model / media scratch
+*.wav.tmp
+tmp/
