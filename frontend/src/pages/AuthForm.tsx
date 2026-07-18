@@ -85,7 +85,7 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           to="/"
           className="mb-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-coal/60 transition-colors hover:text-coal"
         >
-          ← voicecut
+          ← voed
         </Link>
 
         {/* framed card */}

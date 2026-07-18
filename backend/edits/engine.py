@@ -373,7 +373,8 @@ def _exec_adjust_color(db, project, action):
 
 
 def _exec_rotate(db, project, action):
-    deg = int(action.degrees or 90) % 360
+    # `angle` is the preferred field (matches the frontend); `degrees` is an alias.
+    deg = int(action.angle or action.degrees or 90) % 360
     if deg not in (90, 180, 270):
         raise EditError("Rotation must be 90, 180, or 270 degrees.")
     _set_effect(project, {"type": "rotate", "degrees": deg}, ("rotate",))
@@ -389,13 +390,48 @@ def _exec_flip(db, project, action):
                           f"Flipped the video {('vertically' if etype=='vflip' else 'horizontally')}.")
 
 
+def _aspect_crop_box(width: int, height: int, aspect: str) -> tuple[int, int, int, int]:
+    """Centre-crop box (w, h, x, y) for a semantic aspect ratio. Dimensions are
+    forced even (yuv420p / libx264 requires it)."""
+    ow, oh = width, height
+    if aspect == "square":
+        w = h = min(ow, oh)
+    elif aspect == "portrait":
+        target = 9.0 / 16.0
+        if ow / oh > target:
+            w, h = int(round(oh * target)), oh
+        else:
+            w, h = ow, int(round(ow / target))
+    elif aspect == "landscape":
+        target = 16.0 / 9.0
+        if ow / oh < target:
+            w, h = ow, int(round(ow / target))
+        else:
+            w, h = int(round(oh * target)), oh
+    else:
+        raise EditError("Crop aspect must be square, portrait, or landscape.")
+    w -= w % 2
+    h -= h % 2
+    return w, h, max(0, (ow - w) // 2), max(0, (oh - h) // 2)
+
+
 def _exec_crop(db, project, action):
-    if not all(v is not None for v in (action.w, action.h)):
-        raise EditError("Crop needs at least w and h.")
-    eff = {"type": "crop", "w": int(action.w), "h": int(action.h),
-           "x": int(action.x or 0), "y": int(action.y or 0)}
+    aspect = action.aspect.value if hasattr(action.aspect, "value") else action.aspect
+    if aspect:
+        if not (project.width and project.height):
+            raise EditError("Don't know the video size to crop by aspect.")
+        w, h, x, y = _aspect_crop_box(project.width, project.height, aspect)
+        eff = {"type": "crop", "w": w, "h": h, "x": x, "y": y}
+        label, summary = f"crop {aspect}", f"Cropped the frame to {aspect} aspect."
+    elif action.w is not None and action.h is not None:
+        w, h = int(action.w) - int(action.w) % 2, int(action.h) - int(action.h) % 2
+        eff = {"type": "crop", "w": w, "h": h,
+               "x": int(action.x or 0), "y": int(action.y or 0)}
+        label, summary = "crop", "Cropped the frame."
+    else:
+        raise EditError("Crop needs an aspect (square/portrait/landscape) or explicit w and h.")
     _set_effect(project, eff, ("crop",))
-    return _commit_effect(db, project, action, "crop", "Cropped the frame.")
+    return _commit_effect(db, project, action, label, summary)
 
 
 def _exec_resize(db, project, action):

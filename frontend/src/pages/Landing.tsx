@@ -80,11 +80,9 @@ export default function Landing() {
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         {/* header */}
         <header className="flex items-center justify-between border-b border-coal py-5">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid h-7 w-7 place-items-center rounded-full bg-coal">
-              <span className="h-2.5 w-2.5 rounded-full bg-flame" />
-            </span>
-            <span className="text-lg font-bold lowercase tracking-tight">voicecut</span>
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/voed-mark.svg" alt="Voed" className="h-16 w-auto" />
+            <span className="text-2xl font-black lowercase tracking-tight text-coal">voed</span>
           </Link>
           <Link
             to="/signin"
@@ -113,7 +111,7 @@ export default function Landing() {
             style={{ animationDelay: "60ms" }}
           >
             <Sparkle className="h-3 w-3 text-flame" />
-            The VoiceCut way
+            The Voed way
           </div>
 
           <h1
@@ -186,7 +184,7 @@ export default function Landing() {
         <footer className="flex flex-wrap items-center justify-between gap-3 py-6 text-[11px] uppercase tracking-[0.15em] text-coal/50">
           <div className="flex items-center gap-2">
             <Sparkle className="h-3 w-3 text-flame" />
-            VoiceCut — voice-to-action video editing
+            Voed — voice-to-action video editing
           </div>
           <div>No cloud · No keys · No telemetry</div>
         </footer>

@@ -14,6 +14,12 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
+class CropAspect(str, Enum):
+    square = "square"
+    portrait = "portrait"
+    landscape = "landscape"
+
+
 class ActionName(str, Enum):
     # --- structural / timeline ---
     trim = "trim"
@@ -78,9 +84,11 @@ class Action(BaseModel):
     contrast: float | None = None     # 0..3   (1 = neutral)
     saturation: float | None = None   # 0..3   (1 = neutral)
     amount: float | None = None       # blur sigma / generic strength
-    degrees: int | None = None        # rotate: 90 | 180 | 270
+    degrees: int | None = None        # rotate: 90 | 180 | 270 (alias: angle)
+    angle: int | None = None          # rotate: 90 | 180 | 270 (preferred name)
     direction: str | None = None      # flip: horizontal | vertical
     # geometry
+    aspect: CropAspect | None = None  # crop: square | portrait | landscape
     height: int | None = None         # resize target height
     x: int | None = None
     y: int | None = None
@@ -129,7 +137,9 @@ PLANNER_JSON_SCHEMA: dict = {
                 "saturation": {"type": "number"},
                 "amount": {"type": "number"},
                 "degrees": {"type": "integer", "enum": [90, 180, 270]},
+                "angle": {"type": "integer", "enum": [90, 180, 270]},
                 "direction": {"type": "string", "enum": ["horizontal", "vertical"]},
+                "aspect": {"type": "string", "enum": ["square", "portrait", "landscape"]},
                 "height": {"type": "integer"},
                 "x": {"type": "integer"},
                 "y": {"type": "integer"},

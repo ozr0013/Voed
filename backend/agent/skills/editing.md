@@ -51,10 +51,11 @@ All times are in seconds of the CURRENT timeline (what you see), not the source.
   "more vivid/punchy" → saturation=1.5, "washed out" → saturation=0.5.
 
 ## Geometry
-- `rotate` (degrees) — 90 | 180 | 270.
+- `rotate` (angle) — 90 | 180 | 270. "rotate 90", "turn it upright".
 - `flip` (direction) — horizontal | vertical (mirror).
 - `resize` (height) — scale to a target height, e.g. 720 or 1080.
-- `crop` (w, h, x, y) — crop to a w×h box at (x, y).
+- `crop` (aspect) — square | portrait | landscape. "crop to square", "make it
+  vertical/portrait for TikTok", "make it widescreen". Length unchanged.
 
 ## Meta
 - `undo` — revert the most recent edit.
