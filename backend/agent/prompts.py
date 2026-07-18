@@ -4,8 +4,27 @@ The two SYSTEM strings are byte-stable — they never change between calls, so
 Ollama's prefix/KV cache stays warm. All per-call content (goal, timeline state,
 transcript window, screenshot) is appended in the user prompt / images, after
 the static prefix.
+
+Editing semantics (which action for which phrasing, plus guardrails) live in
+skills/editing.md and are appended to the planner system prompt at import time,
+so new edit behavior is a doc + executor change — not a prompt rewrite.
 """
 from __future__ import annotations
+
+from pathlib import Path
+
+_SKILLS_DIR = Path(__file__).parent / "skills"
+
+
+def _load_skill(name: str) -> str:
+    p = _SKILLS_DIR / name
+    try:
+        return p.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+EDITING_SKILL = _load_skill("editing.md")
 
 # --------------------------------------------------------------------------- #
 # PLANNER
@@ -27,6 +46,8 @@ supported by the screen or the state.
 Actions you may emit (field usage in parentheses):
 - trim (start_s,end_s): adjust the kept in/out range of the timeline edge.
 - cut_range (start_s,end_s): remove the time range [start_s,end_s] from the timeline.
+- mute_range (start_s,end_s): silence the AUDIO over [start_s,end_s]. The video \
+keeps every frame and stays the SAME length (this is NOT a cut).
 - split (start_s): split a clip at start_s.
 - remove_silence: remove all silent gaps (uses transcript+waveform).
 - reorder_clips (clip_id,position): move a clip to a new index.
@@ -40,16 +61,24 @@ Actions you may emit (field usage in parentheses):
 
 Rules:
 - Interpret times in seconds. "the first ten seconds" => cut_range start_s=0 end_s=10.
+- "mute"/"silence"/"no audio" => mute_range (NEVER cut_range). Cutting removes \
+frames and shortens the video; muting only silences audio and keeps the length.
 - For content-based commands ("the part where I talk about pricing"), use the \
 transcript window provided to choose concrete start_s/end_s.
+- If the request cannot be done with an action above, DO NOT substitute a \
+different destructive action. Use ask_user (to clarify) or task_failed (if the \
+capability does not exist yet).
 - On the FIRST call for a goal, fill `plan` with a short list of step names. On \
 every later call, leave `plan` empty.
 - `expected_result` must be a specific, visually checkable statement about how the \
 editor screen should look AFTER this action (e.g. "timeline now starts at 0:10 and \
-is about 10 seconds shorter").
+is about 10 seconds shorter", or "clips covering 0:00-0:30 show a muted badge").
 - Keep `thought` under 200 characters.
 - When the screen already shows the goal achieved, emit task_complete.
 Respond ONLY with the JSON object required by the schema."""
+
+if EDITING_SKILL:
+    PLANNER_SYSTEM += "\n\n# EDITING SKILL (reference)\n" + EDITING_SKILL
 
 
 # --------------------------------------------------------------------------- #

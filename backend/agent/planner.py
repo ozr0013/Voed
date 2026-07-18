@@ -2,13 +2,40 @@
 from __future__ import annotations
 
 import json
+import re
 import time
+from collections.abc import AsyncIterator
 
 from .. import ollama_client
 from ..config import settings
 from ..models import Project
 from . import prompts
 from .schemas import PlannerOutput
+
+_THOUGHT_KEY = re.compile(r'"thought"\s*:\s*"')
+_UNESCAPE = {"n": "\n", "t": "\t", "r": "\r", '"': '"', "\\": "\\", "/": "/"}
+
+
+def _partial_thought(raw: str) -> str | None:
+    """Best-effort extraction of the `thought` string from a partially-streamed
+    JSON object. Returns the text decoded so far (even before the closing quote),
+    or None if the thought field hasn't started yet."""
+    m = _THOUGHT_KEY.search(raw)
+    if not m:
+        return None
+    out: list[str] = []
+    esc = False
+    for ch in raw[m.end():]:
+        if esc:
+            out.append(_UNESCAPE.get(ch, ch))
+            esc = False
+        elif ch == "\\":
+            esc = True
+        elif ch == '"':
+            break
+        else:
+            out.append(ch)
+    return "".join(out)
 
 
 def state_summary(project: Project) -> str:
@@ -82,3 +109,47 @@ async def plan(
     data = json.loads(raw)
     output = PlannerOutput.model_validate(data)
     return output, latency_ms, raw
+
+
+async def plan_stream(
+    *,
+    project: Project,
+    goal: str,
+    screenshot: bytes,
+    first_call: bool,
+    completed_steps: list[str] | None = None,
+    last_verify: str | None = None,
+) -> AsyncIterator[dict]:
+    """Streaming planner. Yields {"thought": <partial text>} as reasoning arrives,
+    then a final {"final": PlannerOutput, "latency_ms": int, "raw": str}."""
+    from .schemas import PLANNER_JSON_SCHEMA
+
+    user_prompt = prompts.build_planner_prompt(
+        goal=goal,
+        state_summary=state_summary(project),
+        transcript_window=transcript_window(project, goal),
+        completed_steps=completed_steps,
+        last_verify=last_verify,
+        first_call=first_call,
+    )
+
+    t0 = time.time()
+    raw = ""
+    last_emit = ""
+    async for chunk in ollama_client.generate_stream(
+        system=prompts.PLANNER_SYSTEM,
+        prompt=user_prompt,
+        images=[screenshot],
+        json_schema=PLANNER_JSON_SCHEMA,
+        max_tokens=settings.planner_max_tokens,
+        temperature=0.0,
+    ):
+        raw += chunk
+        partial = _partial_thought(raw)
+        if partial is not None and partial != last_emit:
+            last_emit = partial
+            yield {"thought": partial}
+
+    latency_ms = int((time.time() - t0) * 1000)
+    output = PlannerOutput.model_validate(json.loads(raw))
+    yield {"final": output, "latency_ms": latency_ms, "raw": raw}

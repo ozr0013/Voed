@@ -13,6 +13,8 @@ this project:
 from __future__ import annotations
 
 import base64
+import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -92,3 +94,53 @@ async def generate(
             return r.json()
     except httpx.HTTPError as e:  # noqa: PERF203
         raise OllamaError(f"Ollama request failed: {e}") from e
+
+
+async def generate_stream(
+    *,
+    system: str,
+    prompt: str,
+    images: list[bytes] | None = None,
+    json_schema: dict[str, Any] | None = None,
+    max_tokens: int = 250,
+    temperature: float = 0.0,
+    timeout: float = 120.0,
+) -> AsyncIterator[str]:
+    """Streaming generation: yields response text chunks as Ollama produces them.
+
+    Same request shape as `generate` but with `stream: true`. Ollama returns
+    newline-delimited JSON objects, each carrying a `response` token fragment and
+    a final `done: true`. Used to surface the planner's reasoning live.
+    """
+    payload: dict[str, Any] = {
+        "model": settings.model,
+        "system": system,
+        "prompt": prompt,
+        "stream": True,
+        "options": {
+            "temperature": temperature,
+            "num_predict": max_tokens,
+        },
+    }
+    if images:
+        payload["images"] = [_encode_image(b) for b in images]
+    if json_schema is not None:
+        payload["format"] = json_schema
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            async with client.stream(
+                "POST", f"{settings.ollama_url}/api/generate", json=payload
+            ) as r:
+                r.raise_for_status()
+                async for line in r.aiter_lines():
+                    if not line.strip():
+                        continue
+                    obj = json.loads(line)
+                    frag = obj.get("response")
+                    if frag:
+                        yield frag
+                    if obj.get("done"):
+                        break
+    except httpx.HTTPError as e:
+        raise OllamaError(f"Ollama stream failed: {e}") from e
