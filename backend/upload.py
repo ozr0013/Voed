@@ -26,7 +26,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import media, storage
+from . import asr, media, storage
 from .auth import current_user
 from .db import SessionLocal, get_db
 from .models import Clip, EditVersion, Project, User
@@ -96,7 +96,9 @@ def _process_upload(project_id: int, user_id: int, tmp_path: Path, ext: str) -> 
             project.proxy_path = None  # preview falls back to original
 
         project.status = "ready"
-        # transcription (word-level) is kicked off in a later milestone; leave pending
+        # Mark transcription in-flight, then run it in its own thread so the video
+        # is immediately usable (time-based edits) while speech is transcribed.
+        project.transcript_status = "processing"
         db.commit()
     except Exception as e:  # noqa: BLE001
         db.rollback()
@@ -104,6 +106,42 @@ def _process_upload(project_id: int, user_id: int, tmp_path: Path, ext: str) -> 
         if project:
             project.status = "error"
             project.error = str(e)[:500]
+            db.commit()
+        db.close()
+        return
+    finally:
+        db.close()
+
+    threading.Thread(
+        target=_transcribe_project, args=(project_id,), daemon=True
+    ).start()
+
+
+def _transcribe_project(project_id: int) -> None:
+    """Word-level transcription of a project's audio via faster-whisper. Populates
+    project.transcript (list of {start,end,word}) and flips transcript_status."""
+    db = SessionLocal()
+    try:
+        project = db.get(Project, project_id)
+        if project is None or not project.original_path:
+            return
+        project.transcript_status = "processing"
+        db.commit()
+        original = storage.abs_path(project.original_path)
+        tr = asr.transcribe_path(original, word_timestamps=True)
+        # cast to native floats — faster-whisper returns numpy floats, which the
+        # JSON column can't serialize.
+        project.transcript = [
+            {"start": float(w.start), "end": float(w.end), "word": w.word}
+            for w in tr.words
+        ]
+        project.transcript_status = "ready"
+        db.commit()
+    except Exception:  # noqa: BLE001
+        db.rollback()
+        project = db.get(Project, project_id)
+        if project:
+            project.transcript_status = "error"
             db.commit()
     finally:
         db.close()
@@ -212,6 +250,23 @@ def delete_project(
     db.delete(project)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/{project_id}/transcribe")
+def transcribe(
+    project_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)
+) -> dict:
+    """(Re)start word-level transcription in the background. Idempotent: no-op if
+    already transcribing or done. Lets pending/failed videos self-heal on open."""
+    project = _owned(project_id, user, db)
+    if project.transcript_status in ("processing", "ready"):
+        return {"status": project.transcript_status}
+    project.transcript_status = "processing"
+    db.commit()
+    threading.Thread(
+        target=_transcribe_project, args=(project.id,), daemon=True
+    ).start()
+    return {"status": "processing"}
 
 
 # --------------------------------------------------------------------------- #

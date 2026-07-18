@@ -49,6 +49,7 @@ export default function Editor() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const cancelRef = useRef(false);
   const runningRef = useRef(false);
+  const transcribeReq = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +69,17 @@ export default function Editor() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Self-heal: if a video's speech was never transcribed, kick it off once on
+  // open. The endpoint is idempotent, and the poll below picks up "ready".
+  useEffect(() => {
+    if (project?.transcript_status === "pending" && !transcribeReq.current) {
+      transcribeReq.current = true;
+      api.transcribe(projectId).catch(() => {
+        transcribeReq.current = false;
+      });
+    }
+  }, [project, projectId]);
 
   // Poll only while processing/transcribing AND no agent run is active (a run
   // manages its own refetches; polling mid-run would fight the timeline render).

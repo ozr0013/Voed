@@ -142,6 +142,8 @@ export const api = {
   // projects
   listProjects: () => req<ProjectSummary[]>("/api/projects"),
   getProject: (id: number) => req<ProjectDetail>(`/api/projects/${id}`),
+  transcribe: (id: number) =>
+    req<{ status: string }>(`/api/projects/${id}/transcribe`, { method: "POST" }),
   deleteProject: (id: number) =>
     req<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" }),
   uploadVideo,
