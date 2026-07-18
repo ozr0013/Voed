@@ -1,4 +1,4 @@
-# VoiceCut — edit video by talking
+# Voed — edit video by talking
 
 A voice-controlled video editing agent that runs **100% locally**. Sign in,
 upload a video, hold the mic button, and say things like *"cut the first ten
