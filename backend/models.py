@@ -22,6 +22,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -182,3 +183,27 @@ class AgentStep(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     run: Mapped[AgentRun] = relationship(back_populates="steps")
+
+
+class Integration(Base):
+    """A user's connection to an external service (e.g. Google Drive export).
+
+    Stores OAuth tokens so exports can be pushed without re-authorizing each
+    time. One row per (user, provider). Tokens are stored as-is in the local
+    SQLite file — acceptable for a self-hosted, single-machine app.
+    """
+
+    __tablename__ = "integrations"
+    __table_args__ = (UniqueConstraint("user_id", "provider", name="uq_user_provider"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(64))  # "google_drive"
+    access_token: Mapped[str] = mapped_column(Text)
+    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    token_expiry: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    account_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utcnow, onupdate=utcnow
+    )

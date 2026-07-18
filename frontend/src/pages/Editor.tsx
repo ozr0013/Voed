@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import AgentPanel, { type AgentStepView } from "../components/AgentPanel";
+import ExportPanel from "../components/ExportPanel";
 import MicButton from "../components/MicButton";
 import Timeline from "../components/Timeline";
 import VideoPreview from "../components/VideoPreview";
@@ -220,12 +221,15 @@ export default function Editor() {
           />
         </div>
 
-        <div className="w-80 shrink-0">
-          <AgentPanel
-            transcript={transcript}
-            status={agentStatus}
-            steps={Object.values(steps).sort((a, b) => a.index - b.index)}
-          />
+        <div className="flex w-80 shrink-0 flex-col gap-4">
+          <div className="min-h-0 flex-1">
+            <AgentPanel
+              transcript={transcript}
+              status={agentStatus}
+              steps={Object.values(steps).sort((a, b) => a.index - b.index)}
+            />
+          </div>
+          <ExportPanel projectId={projectId} ready={!processing} />
         </div>
       </div>
 

@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, health, stt, tts, upload
+from . import auth, health, integrations, stt, tts, upload
 from .agent import routes as agent_routes
 from .config import ROOT, settings
 from .db import init_db
@@ -70,6 +70,7 @@ app.include_router(upload.router)
 app.include_router(stt.router)
 app.include_router(tts.router)
 app.include_router(agent_routes.router)
+app.include_router(integrations.router)
 
 
 # --- Static frontend (production build) ---

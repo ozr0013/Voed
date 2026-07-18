@@ -135,4 +135,21 @@ export const api = {
   deleteProject: (id: number) =>
     req<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" }),
   uploadVideo,
+
+  // Same-origin URL for the current edited render (the JWT cookie rides along).
+  exportUrl: (id: number) => `/api/projects/${id}/export`,
+
+  // Google Drive integration
+  driveStatus: () =>
+    req<{ configured: boolean; connected: boolean; email: string | null }>(
+      "/api/integrations/drive/status",
+    ),
+  driveConnectUrl: () => "/api/integrations/drive/connect",
+  driveDisconnect: () =>
+    req<{ ok: boolean }>("/api/integrations/drive/disconnect", { method: "POST" }),
+  sendToDrive: (id: number) =>
+    req<{ ok: boolean; name: string; link: string | null }>(
+      `/api/integrations/drive/export/${id}`,
+      { method: "POST" },
+    ),
 };

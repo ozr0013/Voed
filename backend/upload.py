@@ -10,6 +10,7 @@ request returns immediately; the dashboard polls project status.
 """
 from __future__ import annotations
 
+import re
 import threading
 from pathlib import Path
 
@@ -240,3 +241,30 @@ def get_media(
     if not path.exists():
         raise HTTPException(status_code=404, detail="File missing")
     return FileResponse(path)
+
+
+# --------------------------------------------------------------------------- #
+# Export — hand off the current edited render as a downloadable file.
+# Serves the head EditVersion (full-res edited timeline); falls back to the
+# untouched original if no edits have been applied yet. Everything stays local.
+# --------------------------------------------------------------------------- #
+@router.get("/{project_id}/export")
+def export_project(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    project = _owned(project_id, user, db)
+    rel: str | None = None
+    if project.head_version_id:
+        head = db.get(EditVersion, project.head_version_id)
+        rel = head.file_path if head else None
+    rel = rel or project.original_path
+    if not rel:
+        raise HTTPException(status_code=404, detail="Nothing to export yet")
+    path = storage.abs_path(rel)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Export file missing")
+
+    safe = re.sub(r"[^\w.-]+", "_", project.name).strip("_") or f"project_{project.id}"
+    return FileResponse(path, media_type="video/mp4", filename=f"{safe}.mp4")

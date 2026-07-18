@@ -57,6 +57,18 @@ class Settings(BaseSettings):
     cookie_name: str = "voicecut_session"
     cookie_secure: bool = False   # LAN over http; no TLS in the hackathon setup
 
+    # --- Integrations (optional; opt-in cloud export) ---
+    # Google Drive export. Empty by default — VoiceCut stays fully local unless
+    # the user supplies their own OAuth client. Set these via env / .env:
+    #   VOICECUT_GOOGLE_CLIENT_ID, VOICECUT_GOOGLE_CLIENT_SECRET
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/api/integrations/drive/callback"
+
+    @property
+    def google_drive_configured(self) -> bool:
+        return bool(self.google_client_id and self.google_client_secret)
+
     # --- Agent loop ---
     max_steps: int = 12
     planner_max_tokens: int = 250
