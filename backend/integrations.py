@@ -287,9 +287,12 @@ def export_to_drive(
         timeout=300,
     )
     if resp.status_code not in (200, 201):
-        raise HTTPException(
-            status_code=502, detail=f"Drive upload failed ({resp.status_code})."
-        )
+        detail = f"Drive upload failed ({resp.status_code})."
+        try:
+            detail = resp.json().get("error", {}).get("message", detail)
+        except (ValueError, AttributeError):
+            pass
+        raise HTTPException(status_code=502, detail=detail)
     data = resp.json()
     return {
         "ok": True,
