@@ -14,6 +14,12 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
+class CropAspect(str, Enum):
+    square = "square"
+    portrait = "portrait"
+    landscape = "landscape"
+
+
 class ActionName(str, Enum):
     trim = "trim"
     cut_range = "cut_range"
@@ -22,6 +28,8 @@ class ActionName(str, Enum):
     remove_silence = "remove_silence"
     reorder_clips = "reorder_clips"
     add_caption = "add_caption"
+    crop = "crop"
+    rotate = "rotate"
     seek_preview = "seek_preview"
     export = "export"
     delete_clip = "delete_clip"
@@ -39,6 +47,8 @@ class Action(BaseModel):
     text: str | None = None
     quality: str | None = None
     question: str | None = None
+    angle: int | None = None
+    aspect: CropAspect | None = None
 
 
 class PlannerOutput(BaseModel):
@@ -71,6 +81,8 @@ PLANNER_JSON_SCHEMA: dict = {
                 "text": {"type": "string"},
                 "quality": {"type": "string", "enum": ["1080p", "720p"]},
                 "question": {"type": "string"},
+                "angle": {"type": "integer"},
+                "aspect": {"type": "string", "enum": ["square", "portrait", "landscape"]},
             },
             "required": ["name"],
         },

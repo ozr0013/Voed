@@ -46,8 +46,11 @@ supported by the screen or the state.
 Actions you may emit (field usage in parentheses):
 - trim (start_s,end_s): adjust the kept in/out range of the timeline edge.
 - cut_range (start_s,end_s): remove the time range [start_s,end_s] from the timeline.
+- trim (start_s,end_s): keep only the timeline interval [start_s,end_s].
 - mute_range (start_s,end_s): silence the AUDIO over [start_s,end_s]. The video \
 keeps every frame and stays the SAME length (this is NOT a cut).
+- crop (aspect): crop the visible frame to square, portrait, or landscape without changing timeline length.
+- rotate (angle): rotate the visible frame by 90, 180, or 270 degrees without changing timeline length.
 - split (start_s): split a clip at start_s.
 - remove_silence: remove all silent gaps (uses transcript+waveform).
 - reorder_clips (clip_id,position): move a clip to a new index.

@@ -10,6 +10,8 @@ doc + adding an executor — not by inventing a new action name for every phrasi
 | -------------------------------------------------------- | ------------- | ----------------------------------------- |
 | "cut / remove / delete the first 10s", "take out 5–8s"   | `cut_range`   | Removes that range. Timeline gets SHORTER. |
 | "trim to 10–30s", "keep only the middle", "crop the ends" | `trim`        | Keeps only [start,end]. Timeline gets shorter. |
+| "crop to square", "make it portrait", "remove the side bars" | `crop` | Crops the visible frame to an aspect ratio. Timeline length unchanged. |
+| "rotate 90°", "turn it upright", "rotate it clockwise" | `rotate` | Rotates the visible frame. Timeline length unchanged. |
 | "mute / silence / no audio from 0–30s", "kill the sound" | `mute_range`  | Silences audio in that range. Length UNCHANGED. |
 | "go to / scrub to / show me 12s"                         | `seek_preview`| Moves the playhead only. No edit.          |
 
@@ -41,7 +43,7 @@ Instead:
 Examples of requests to REFUSE rather than fake:
 
 - "add background music", "speed it up 2x", "add a transition", "zoom in",
-  "color grade", "rotate 90°" → `task_failed` ("that edit isn't supported yet"),
-  unless/until a matching action exists.
+  "color grade" → `task_failed` ("that edit isn't supported yet"), unless/until a
+  matching action exists.
 
 It is always better to say "I can't do that yet" than to perform the wrong edit.

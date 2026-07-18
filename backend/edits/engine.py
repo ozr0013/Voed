@@ -41,7 +41,13 @@ def _fmt(t: float) -> str:
 
 
 def _commit_new_timeline(
-    db: Session, project: Project, segments: list[Segment], action: Action, label: str
+    db: Session,
+    project: Project,
+    segments: list[Segment],
+    action: Action,
+    label: str,
+    rotate_angle: int | None = None,
+    crop_aspect: str | None = None,
 ) -> EditVersion:
     if not segments or ops.total_duration(segments) < ops.EPS:
         raise EditError("That edit would empty the timeline.")
@@ -51,7 +57,14 @@ def _commit_new_timeline(
     next_idx = (max((v.version_index for v in project.versions), default=0)) + 1
 
     version_file = pdir / "versions" / f"v{next_idx}.mp4"
-    ops.render_segments(original, segments, version_file, muted=project.muted_ranges or [])
+    ops.render_segments(
+        original,
+        segments,
+        version_file,
+        muted=project.muted_ranges or [],
+        rotate_angle=rotate_angle,
+        aspect=crop_aspect,
+    )
 
     # preview proxy (<=720p) of the new timeline
     proxy = pdir / f"proxy_v{next_idx}.mp4"
@@ -157,6 +170,47 @@ def _exec_mute_range(db: Session, project: Project, action: Action) -> ExecResul
     )
 
 
+def _exec_crop(db: Session, project: Project, action: Action) -> ExecResult:
+    if action.aspect is None:
+        raise EditError("crop needs an aspect ratio.")
+    segs = _segments(project)
+    aspect = action.aspect.value if hasattr(action.aspect, "value") else action.aspect
+    v = _commit_new_timeline(
+        db,
+        project,
+        segs,
+        action,
+        f"crop {aspect}",
+        crop_aspect=aspect,
+    )
+    return ExecResult(
+        summary=f"Cropped the frame to {aspect} aspect.",
+        timeline_changed=True,
+        version_id=v.id,
+    )
+
+
+def _exec_rotate(db: Session, project: Project, action: Action) -> ExecResult:
+    if action.angle is None:
+        raise EditError("rotate needs an angle.")
+    if action.angle not in (90, 180, 270):
+        raise EditError("rotate angle must be 90, 180, or 270.")
+    segs = _segments(project)
+    v = _commit_new_timeline(
+        db,
+        project,
+        segs,
+        action,
+        f"rotate {action.angle}°",
+        rotate_angle=action.angle,
+    )
+    return ExecResult(
+        summary=f"Rotated the frame by {action.angle}°.",
+        timeline_changed=True,
+        version_id=v.id,
+    )
+
+
 def _exec_seek_preview(db: Session, project: Project, action: Action) -> ExecResult:
     return ExecResult(
         summary=f"Moved the playhead to {_fmt(action.start_s or 0.0)}.",
@@ -169,6 +223,8 @@ _EXECUTORS = {
     ActionName.cut_range: _exec_cut_range,
     ActionName.trim: _exec_trim,
     ActionName.mute_range: _exec_mute_range,
+    ActionName.crop: _exec_crop,
+    ActionName.rotate: _exec_rotate,
     ActionName.seek_preview: _exec_seek_preview,
 }
 

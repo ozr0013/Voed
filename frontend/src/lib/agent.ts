@@ -33,6 +33,8 @@ function labelFor(step: any): string {
   if (a.name === "cut_range") return `Cut ${a.start_s ?? 0}s–${a.end_s ?? "?"}s`;
   if (a.name === "trim") return `Trim to ${a.start_s ?? 0}s–${a.end_s ?? "?"}s`;
   if (a.name === "mute_range") return `Mute ${a.start_s ?? 0}s–${a.end_s ?? "?"}s`;
+  if (a.name === "rotate") return `Rotate ${a.angle ?? "?"}°`;
+  if (a.name === "crop") return `Crop ${a.aspect ?? "frame"}`;
   return a.name ?? "step";
 }
 

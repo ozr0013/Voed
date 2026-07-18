@@ -11,6 +11,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from .. import media
+
 EPS = 0.02  # ignore sub-frame slivers
 
 
@@ -95,6 +97,52 @@ def merge_intervals(intervals: list[dict]) -> list[dict]:
     return [{"start": s, "end": e} for s, e in merged]
 
 
+def build_video_transform_filter(
+    width: int,
+    height: int,
+    rotate_angle: int | None = None,
+    aspect: str | None = None,
+) -> str | None:
+    """Build an ffmpeg video filter chain for optional rotate / crop transforms."""
+    filters: list[str] = []
+    if rotate_angle is not None:
+        if rotate_angle == 90:
+            filters.append("transpose=1")
+        elif rotate_angle == 180:
+            filters.append("transpose=1,transpose=1")
+        elif rotate_angle == 270:
+            filters.append("transpose=2")
+        else:
+            raise ValueError("rotate angle must be 90, 180, or 270")
+    if aspect is not None:
+        ow, oh = width, height
+        if aspect == "square":
+            size = min(ow, oh)
+            w = h = size
+        elif aspect == "portrait":
+            target = 9.0 / 16.0
+            if ow / oh > target:
+                w = int(round(oh * target))
+                h = oh
+            else:
+                w = ow
+                h = int(round(ow / target))
+        elif aspect == "landscape":
+            target = 16.0 / 9.0
+            if ow / oh < target:
+                h = int(round(ow / target))
+                w = ow
+            else:
+                h = oh
+                w = int(round(oh * target))
+        else:
+            raise ValueError("crop aspect must be square, portrait, or landscape")
+        x = max(0, (ow - w) // 2)
+        y = max(0, (oh - h) // 2)
+        filters.append(f"crop={w}:{h}:{x}:{y}")
+    return ",".join(filters) if filters else None
+
+
 def _has_audio(src: Path) -> bool:
     try:
         out = subprocess.run(
@@ -126,6 +174,8 @@ def render_segments(
     segments: list[Segment],
     out: Path,
     muted: list[dict] | None = None,
+    rotate_angle: int | None = None,
+    aspect: str | None = None,
 ) -> None:
     """Extract each source segment from the original and concatenate them into a
     single frame-accurate file (ultrafast re-encode). `muted` is a list of
@@ -136,12 +186,18 @@ def render_segments(
 
     muted = muted or []
     has_audio = _has_audio(original)
+    info = media.ffprobe_info(original) if rotate_angle is not None or aspect is not None else None
+    width = info.width if info is not None else 0
+    height = info.height if info is not None else 0
+    transform_filter = build_video_transform_filter(width, height, rotate_angle, aspect)
+
     parts, vlabels, alabels = [], [], []
     for i, seg in enumerate(segments):
         s, e = seg.src_start, seg.src_end
-        parts.append(
-            f"[0:v]trim=start={s:.3f}:end={e:.3f},setpts=PTS-STARTPTS[v{i}];"
-        )
+        video_expr = f"[0:v]trim=start={s:.3f}:end={e:.3f},setpts=PTS-STARTPTS"
+        if transform_filter:
+            video_expr += f",{transform_filter}"
+        parts.append(f"{video_expr}[v{i}];")
         vlabels.append(f"[v{i}]")
         if has_audio:
             achain = f"[0:a]atrim=start={s:.3f}:end={e:.3f},asetpts=PTS-STARTPTS"
