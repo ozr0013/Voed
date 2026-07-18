@@ -24,18 +24,17 @@ happened.
 | Frontend           | **React + Vite + TypeScript + Tailwind**               |
 | Database           | **SQLite** via SQLAlchemy                              |
 
-### Model note (read this — it's about honesty for judges)
+### Model note
 
-The brief calls for "Gemma 4 12B." **Ollama has no `gemma4` tag.** The current
-multimodal 12B Gemma tag is **`gemma3:12b`** (Q4 quantization by default), which
-is what VoiceCut uses. Override with the `VOICECUT_MODEL` environment variable to
-run a lighter local model during development, e.g. `gemma3:4b` (already
-multimodal, ~3 GB). The exact tag in use is shown on the health screen and logged
-on every planner/verifier call.
+VoiceCut uses **`gemma4:12b`** — Gemma 4 12B multimodal (Q4 quantization by
+default), a ~7.5 GB pull that includes a vision projector for screen
+understanding. The exact tag in use is shown on the health screen and logged on
+every planner/verifier call. Override with the `VOICECUT_MODEL` environment
+variable to run a lighter local model during development, e.g. `gemma3:4b`.
 
 ```bash
-ollama pull gemma3:12b       # ~8 GB, first run only
-# or, to develop against a smaller model already on disk:
+ollama pull gemma4:12b       # ~7.5 GB, first run only
+# or, to develop against a smaller model:
 VOICECUT_MODEL=gemma3:4b ./start.sh
 ```
 

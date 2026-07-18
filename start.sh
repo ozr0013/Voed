@@ -35,7 +35,7 @@ if ! ollama list >/dev/null 2>&1; then
 fi
 green "  [ok] ollama daemon"
 
-MODEL="${VOICECUT_MODEL:-gemma3:12b}"
+MODEL="${VOICECUT_MODEL:-gemma4:12b}"
 if ! ollama list | grep -q "$MODEL"; then
   yellow "  [..] Pulling $MODEL (first run only, several GB)..."
   ollama pull "$MODEL"

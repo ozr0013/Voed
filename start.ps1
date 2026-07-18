@@ -34,7 +34,7 @@ try { ollama list *> $null } catch {
 Write-Host "  [ok] ollama daemon" -ForegroundColor Green
 
 # --- model ---
-$model = if ($env:VOICECUT_MODEL) { $env:VOICECUT_MODEL } else { "gemma3:12b" }
+$model = if ($env:VOICECUT_MODEL) { $env:VOICECUT_MODEL } else { "gemma4:12b" }
 $tags = (ollama list) -join "`n"
 if ($tags -notmatch [regex]::Escape($model)) {
   Write-Host "  [..] Pulling $model (first run only, several GB)..." -ForegroundColor Yellow

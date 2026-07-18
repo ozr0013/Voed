@@ -28,10 +28,9 @@ class Settings(BaseSettings):
 
     # --- Model runtime (all local) ---
     ollama_url: str = "http://127.0.0.1:11434"
-    # NOTE: There is no "gemma4" tag in Ollama. The current multimodal 12B Gemma
-    # is `gemma3:12b` (Q4 by default). Override with VOICECUT_MODEL to test on a
-    # lighter local model already on disk, e.g. `gemma3:4b`.
-    model: str = "gemma3:12b"
+    # Gemma 4 12B multimodal (Q4 by default), the project's core model. Override
+    # with VOICECUT_MODEL to test on a lighter local model, e.g. gemma3:4b.
+    model: str = "gemma4:12b"
     whisper_model: str = "small"   # faster-whisper size for STT
     whisper_compute: str = "int8"  # CPU-friendly; use "float16" on GPU
     piper_voice: str = "en_US-lessac-medium"
