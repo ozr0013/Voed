@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import AgentPanel, { type AgentStepView } from "../components/AgentPanel";
 import ExportPanel from "../components/ExportPanel";
 import MicButton from "../components/MicButton";
@@ -7,7 +7,7 @@ import Timeline from "../components/Timeline";
 import VideoPreview from "../components/VideoPreview";
 import { runAgent, type StepEvent } from "../lib/agent";
 import { captureEditor } from "../lib/screenshot";
-import { api, type ProjectDetail } from "../lib/api";
+import { api, ApiError, type ProjectDetail } from "../lib/api";
 import { fmtTime } from "../lib/format";
 import { isSpeechMuted, setSpeechMuted, speak } from "../lib/voice";
 
@@ -36,6 +36,7 @@ function TranscriptionChip({ status }: { status: string }) {
 
 export default function Editor() {
   const { id } = useParams();
+  const nav = useNavigate();
   const projectId = Number(id);
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,10 +53,17 @@ export default function Editor() {
   const load = useCallback(async () => {
     try {
       setProject(await api.getProject(projectId));
+      setError(null);
     } catch (e) {
+      // Session expired or no access: stop polling and go to sign-in instead of
+      // hammering the API with 401s forever.
+      if (e instanceof ApiError && e.status === 401) {
+        nav("/signin", { replace: true });
+        return;
+      }
       setError(String((e as Error).message));
     }
-  }, [projectId]);
+  }, [projectId, nav]);
 
   useEffect(() => {
     load();

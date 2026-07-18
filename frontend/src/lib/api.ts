@@ -66,9 +66,16 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* non-JSON error body */
     }
-    throw new Error(detail);
+    throw new ApiError(res.status, detail);
   }
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
+}
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
 }
 
 // Chunked upload: init -> send N chunks -> complete. onProgress in 0..1.
