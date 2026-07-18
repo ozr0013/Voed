@@ -3,9 +3,36 @@
 
 let currentAudio: HTMLAudioElement | null = null;
 
+// Spoken output can be muted. Defaults to muted (silent) — the app never talks
+// unless the user turns speech on. Persisted across reloads.
+const MUTE_KEY = "voicecut_speech_muted";
+let speechMuted = (() => {
+  try {
+    const v = localStorage.getItem(MUTE_KEY);
+    return v === null ? true : v === "1"; // default: muted
+  } catch {
+    return true;
+  }
+})();
+
+export function isSpeechMuted(): boolean {
+  return speechMuted;
+}
+
+export function setSpeechMuted(muted: boolean): void {
+  speechMuted = muted;
+  try {
+    localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  if (muted) stopSpeaking();
+}
+
 // Speak text through Piper. Resolves when playback finishes (or fails silently
 // so a TTS hiccup never blocks the agent). Interrupts any in-flight speech.
 export async function speak(text: string): Promise<void> {
+  if (speechMuted) return; // spoken output disabled
   try {
     stopSpeaking();
     const res = await fetch("/api/tts", {

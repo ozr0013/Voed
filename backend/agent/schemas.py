@@ -41,7 +41,10 @@ class Action(BaseModel):
 
 
 class PlannerOutput(BaseModel):
-    thought: str = Field(default="", max_length=400)
+    # No length caps: Gemma can write a long `thought`, and the JSON schema sent
+    # to Ollama does not constrain it, so a Pydantic cap here would hard-reject
+    # otherwise-valid model output (surfacing as a spurious "too long" error).
+    thought: str = Field(default="")
     plan: list[str] = Field(default_factory=list)
     action: Action
     expected_result: str = Field(default="")
@@ -78,7 +81,7 @@ PLANNER_JSON_SCHEMA: dict = {
 
 class VerifierOutput(BaseModel):
     success: bool
-    observed: str = Field(default="", max_length=300)
+    observed: str = Field(default="")
 
 
 VERIFIER_JSON_SCHEMA: dict = {

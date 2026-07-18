@@ -8,7 +8,7 @@ import { runAgent, type StepEvent } from "../lib/agent";
 import { captureEditor } from "../lib/screenshot";
 import { api, type ProjectDetail } from "../lib/api";
 import { fmtTime } from "../lib/format";
-import { speak } from "../lib/voice";
+import { isSpeechMuted, setSpeechMuted, speak } from "../lib/voice";
 
 function TranscriptionChip({ status }: { status: string }) {
   if (status === "ready") {
@@ -42,6 +42,7 @@ export default function Editor() {
   const [agentStatus, setAgentStatus] = useState("idle");
   const [steps, setSteps] = useState<Record<number, AgentStepView>>({});
   const [running, setRunning] = useState(false);
+  const [muted, setMuted] = useState(isSpeechMuted());
   const videoRef = useRef<HTMLVideoElement>(null);
   const cancelRef = useRef(false);
   const runningRef = useRef(false);
@@ -157,7 +158,24 @@ export default function Editor() {
             {project.width}×{project.height} · {fmtTime(project.timeline_duration_s, true)}
           </span>
         </div>
-        <TranscriptionChip status={project.transcript_status} />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              const next = !muted;
+              setMuted(next);
+              setSpeechMuted(next);
+            }}
+            title={muted ? "Spoken output off — click to enable" : "Spoken output on — click to mute"}
+            className={`rounded-full border px-3 py-1 text-xs ${
+              muted
+                ? "border-edge bg-panel text-white/50"
+                : "border-accent/50 bg-accent/10 text-accent"
+            }`}
+          >
+            {muted ? "🔇 voice off" : "🔊 voice on"}
+          </button>
+          <TranscriptionChip status={project.transcript_status} />
+        </div>
       </header>
 
       {/* editor capture region — this is what the agent screenshots */}
