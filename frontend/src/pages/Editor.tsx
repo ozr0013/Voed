@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import AgentPanel from "../components/AgentPanel";
+import AgentPanel, { type AgentStepView } from "../components/AgentPanel";
 import MicButton from "../components/MicButton";
 import Timeline from "../components/Timeline";
 import VideoPreview from "../components/VideoPreview";
+import { runAgent, type StepEvent } from "../lib/agent";
+import { captureEditor } from "../lib/screenshot";
 import { api, type ProjectDetail } from "../lib/api";
 import { fmtTime } from "../lib/format";
 import { speak } from "../lib/voice";
@@ -38,44 +40,93 @@ export default function Editor() {
   const [currentTime, setCurrentTime] = useState(0);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [agentStatus, setAgentStatus] = useState("idle");
+  const [steps, setSteps] = useState<Record<number, AgentStepView>>({});
+  const [running, setRunning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const cancelRef = useRef(false);
+  const runningRef = useRef(false);
 
-  // Milestone 4: a spoken command is transcribed and echoed back by voice.
-  // The plan->act->verify agent loop is wired in later milestones.
-  const onCommand = (text: string) => {
-    setTranscript(text);
-    setAgentStatus("heard");
-    // instant sub-second acknowledgment before any planning happens
-    speak(`On it. ${text}`);
-  };
-
-  const onMicError = (msg: string) => {
-    setTranscript(null);
-    setAgentStatus("error");
-    speak(msg);
-  };
-
-  const load = useCallback(() => {
-    api.getProject(projectId).then(setProject).catch((e) => setError(String(e.message)));
+  const load = useCallback(async () => {
+    try {
+      setProject(await api.getProject(projectId));
+    } catch (e) {
+      setError(String((e as Error).message));
+    }
   }, [projectId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // While the project is still processing/transcribing, poll for updates.
+  // Poll only while processing/transcribing AND no agent run is active (a run
+  // manages its own refetches; polling mid-run would fight the timeline render).
   useEffect(() => {
-    if (!project) return;
+    if (!project || running) return;
     if (project.status === "ready" && project.transcript_status === "ready") return;
     const t = setInterval(load, 2000);
     return () => clearInterval(t);
-  }, [project, load]);
+  }, [project, running, load]);
 
   const seek = (t: number) => {
     const v = videoRef.current;
     if (v) v.currentTime = t;
     setCurrentTime(t);
   };
+
+  const upsertStep = (e: StepEvent) =>
+    setSteps((prev) => ({ ...prev, [e.index]: { ...prev[e.index], ...e } }));
+
+  // The plan->act->verify agent loop, driven by a spoken (or typed) command.
+  const onCommand = async (text: string) => {
+    if (runningRef.current) return;
+    setTranscript(text);
+    setSteps({});
+    setRunning(true);
+    runningRef.current = true;
+    cancelRef.current = false;
+    try {
+      await runAgent(projectId, text, {
+        onStatus: setAgentStatus,
+        onStep: upsertStep,
+        onSeek: seek,
+        refetchProject: load,
+        shouldCancel: () => cancelRef.current,
+      });
+    } finally {
+      setRunning(false);
+      runningRef.current = false;
+    }
+  };
+
+  const stopRun = () => {
+    cancelRef.current = true;
+    setAgentStatus("stopping…");
+  };
+
+  const onMicError = (msg: string) => {
+    setAgentStatus("error");
+    speak(msg);
+  };
+
+  // Test hook: trigger the loop by text when a real mic isn't available
+  // (headless verification). Harmless in production.
+  useEffect(() => {
+    const w = window as unknown as {
+      __voicecutRun?: (g: string) => void;
+      __capTest?: () => Promise<number | string>;
+    };
+    w.__voicecutRun = (g) => onCommand(g);
+    w.__capTest = async () => {
+      try {
+        const t0 = performance.now();
+        const blob = await captureEditor();
+        return `ok ${blob.size} bytes in ${Math.round(performance.now() - t0)}ms`;
+      } catch (e) {
+        return `err ${String((e as Error).message ?? e)}`;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   if (error) {
     return (
@@ -137,18 +188,36 @@ export default function Editor() {
         </div>
 
         <div className="w-80 shrink-0">
-          <AgentPanel transcript={transcript} status={agentStatus} />
+          <AgentPanel
+            transcript={transcript}
+            status={agentStatus}
+            steps={Object.values(steps).sort((a, b) => a.index - b.index)}
+          />
         </div>
       </div>
 
       {/* mic */}
-      <div className="flex items-center justify-center border-t border-edge py-4">
+      <div className="flex items-center justify-center gap-6 border-t border-edge py-4">
         <MicButton
-          disabled={processing}
-          hint={processing ? "Waiting for video to finish processing" : undefined}
+          disabled={processing || running}
+          hint={
+            processing
+              ? "Waiting for video to finish processing"
+              : running
+                ? "Working…"
+                : undefined
+          }
           onTranscript={onCommand}
           onError={onMicError}
         />
+        {running && (
+          <button
+            onClick={stopRun}
+            className="rounded-lg border border-bad/50 bg-bad/10 px-4 py-2 text-sm text-bad hover:bg-bad/20"
+          >
+            Stop
+          </button>
+        )}
       </div>
     </div>
   );
