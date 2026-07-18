@@ -88,24 +88,33 @@ export default function Timeline({
           return (
             <div
               key={c.id}
-              className="relative flex min-w-[3px] flex-col overflow-hidden border border-coal bg-flame/15"
+              className={`relative flex min-w-[3px] flex-col overflow-hidden border ${
+                c.muted ? "border-coal/40 bg-coal/10" : "border-coal bg-flame/15"
+              }`}
               style={{ width: `${widthPct}%` }}
               data-clip-id={c.id}
+              data-muted={c.muted ? "true" : undefined}
               title={`clip ${i + 1}: ${fmtTime(c.src_start_s, true)}–${fmtTime(
                 c.src_end_s,
                 true,
-              )}`}
+              )}${c.muted ? " (muted)" : ""}`}
             >
-              {/* waveform */}
+              {/* waveform (dimmed when muted) */}
               <div className="flex h-16 items-center gap-[1px] px-1 pt-1">
                 {peaks.map((p, j) => (
                   <div
                     key={j}
-                    className="flex-1 rounded-sm bg-flame"
+                    className={`flex-1 rounded-sm ${c.muted ? "bg-coal/25" : "bg-flame"}`}
                     style={{ height: `${Math.max(4, p * 100)}%` }}
                   />
                 ))}
               </div>
+              {/* muted badge */}
+              {c.muted && (
+                <div className="absolute right-1 top-1 rounded bg-black/60 px-1 text-[10px] leading-tight text-white/80">
+                  🔇
+                </div>
+              )}
               {/* label */}
               <div className="truncate px-1.5 pb-1 text-[10px] tabular-nums text-coal/60">
                 {fmtTime(c.src_start_s)}–{fmtTime(c.src_end_s)}

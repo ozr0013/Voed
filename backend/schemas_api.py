@@ -14,9 +14,10 @@ class ClipOut(BaseModel):
     src_end_s: float
     duration_s: float
     caption_text: str | None = None
+    muted: bool = False  # audio silenced somewhere in this clip's source range
 
     @classmethod
-    def of(cls, c: Clip) -> "ClipOut":
+    def of(cls, c: Clip, muted: bool = False) -> "ClipOut":
         return cls(
             id=c.id,
             order_index=c.order_index,
@@ -24,6 +25,7 @@ class ClipOut(BaseModel):
             src_end_s=c.src_end_s,
             duration_s=c.duration_s,
             caption_text=c.caption_text,
+            muted=muted,
         )
 
 
@@ -61,15 +63,24 @@ class ProjectDetail(ProjectSummary):
     fps: float
     waveform: list[float] | None = None
     clips: list[ClipOut] = []
+    muted_ranges: list[dict] = []  # source-time [{"start","end"}] silenced regions
     preview_url: str | None = None
 
     @classmethod
     def of(cls, p: Project) -> "ProjectDetail":  # type: ignore[override]
         base = ProjectSummary.of(p).model_dump()
+        muted = p.muted_ranges or []
+
+        def _is_muted(c: Clip) -> bool:
+            return any(
+                not (m["end"] <= c.src_start_s or m["start"] >= c.src_end_s) for m in muted
+            )
+
         base.update(
             fps=p.fps,
             waveform=p.waveform,
-            clips=[ClipOut.of(c).model_dump() for c in p.clips],
+            clips=[ClipOut.of(c, _is_muted(c)).model_dump() for c in p.clips],
+            muted_ranges=muted,
             preview_url=(
                 f"/api/projects/{p.id}/media/preview"
                 if (p.proxy_path or p.original_path)

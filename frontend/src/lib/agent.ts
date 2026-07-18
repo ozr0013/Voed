@@ -10,6 +10,8 @@ export interface StepEvent {
   label: string;
   status: "running" | "done" | "failed";
   thought?: string;
+  plan?: string[];
+  expectedResult?: string;
   observed?: string;
   shotIn?: string;
   shotOut?: string;
@@ -30,23 +32,52 @@ function labelFor(step: any): string {
   if (step.summary) return step.summary;
   if (a.name === "cut_range") return `Cut ${a.start_s ?? 0}s–${a.end_s ?? "?"}s`;
   if (a.name === "trim") return `Trim to ${a.start_s ?? 0}s–${a.end_s ?? "?"}s`;
+  if (a.name === "mute_range") return `Mute ${a.start_s ?? 0}s–${a.end_s ?? "?"}s`;
   return a.name ?? "step";
 }
 
-async function postStep(
+// Stream one plan+act step over SSE. `onEvent` fires for live reasoning events
+// ({type:"step_start"} / {type:"thought"}); resolves with the final "done" payload.
+async function streamStep(
   projectId: number,
   goal: string,
   shot: Blob,
   runId: number | null,
+  onEvent: (ev: any) => void,
 ): Promise<any> {
   const form = new FormData();
   form.append("project_id", String(projectId));
   form.append("goal", goal);
   form.append("screenshot", shot, "editor.png");
   if (runId != null) form.append("run_id", String(runId));
+
   const r = await fetch("/api/agent/step", { method: "POST", credentials: "include", body: form });
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? "Planner step failed");
-  return r.json();
+  if (!r.ok || !r.body) {
+    throw new Error((await r.json().catch(() => ({}))).detail ?? "Planner step failed");
+  }
+
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let done: any = null;
+
+  for (;;) {
+    const { value, done: readerDone } = await reader.read();
+    if (readerDone) break;
+    buf += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buf.indexOf("\n\n")) >= 0) {
+      const raw = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 2);
+      if (!raw.startsWith("data:")) continue;
+      const ev = JSON.parse(raw.slice(5).trim());
+      if (ev.type === "done") done = ev;
+      else if (ev.type === "error") throw new Error(ev.message ?? "Agent error");
+      else onEvent(ev);
+    }
+  }
+  if (!done) throw new Error("Agent stream ended without a result");
+  return done;
 }
 
 async function postVerify(runId: number, stepId: number, shot: Blob): Promise<any> {
@@ -81,7 +112,20 @@ export async function runAgent(
     const shot = await captureEditor();
     let step: any;
     try {
-      step = await postStep(projectId, goal, shot, runId);
+      cb.onStatus("thinking…");
+      step = await streamStep(projectId, goal, shot, runId, (ev) => {
+        if (ev.type === "step_start") {
+          cb.onStep({
+            index: ev.step_index,
+            label: "Thinking…",
+            status: "running",
+            shotIn: ev.screenshot_in_url,
+          });
+        } else if (ev.type === "thought") {
+          // Live reasoning: merges into the step's thought as tokens arrive.
+          cb.onStep({ index: ev.step_index, label: "Thinking…", status: "running", thought: ev.text });
+        }
+      });
     } catch (e) {
       cb.onStatus("error");
       await speak(String((e as Error).message ?? e));
@@ -95,6 +139,8 @@ export async function runAgent(
       label: labelFor(step),
       status: "running",
       thought: step.thought,
+      plan: step.plan,
+      expectedResult: step.expected_result,
       shotIn: step.screenshot_in_url,
     });
 
@@ -149,6 +195,8 @@ export async function runAgent(
       label: labelFor(step),
       status: ver.success ? "done" : "failed",
       thought: step.thought,
+      plan: step.plan,
+      expectedResult: step.expected_result,
       observed: ver.observed,
       shotIn: step.screenshot_in_url,
       shotOut: ver.screenshot_out_url,

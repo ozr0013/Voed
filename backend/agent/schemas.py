@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 class ActionName(str, Enum):
     trim = "trim"
     cut_range = "cut_range"
+    mute_range = "mute_range"
     split = "split"
     remove_silence = "remove_silence"
     reorder_clips = "reorder_clips"
