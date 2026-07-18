@@ -141,22 +141,60 @@ def _local_mutes(
 # agent can grow new skills (colour grade, speed, captions, fades, …) purely by
 # emitting new effect dicts — no change to the segment/render contract.
 # --------------------------------------------------------------------------- #
+# Fast-path fonts that commonly exist per-OS.
 _FONT_CANDIDATES = [
+    # Windows
     "C:/Windows/Fonts/arialbd.ttf",
     "C:/Windows/Fonts/arial.ttf",
     "C:/Windows/Fonts/segoeui.ttf",
     "C:/Windows/Fonts/calibri.ttf",
+    # macOS — Arial isn't guaranteed; Helvetica/SFNS always ship with the OS
+    "/System/Library/Fonts/Supplemental/Arial.ttf",
+    "/System/Library/Fonts/Supplemental/Helvetica.ttf",
+    "/System/Library/Fonts/Helvetica.ttc",
+    "/System/Library/Fonts/SFNS.ttf",
+    "/System/Library/Fonts/SFNSDisplay.ttf",
+    "/Library/Fonts/Arial.ttf",
+    # Linux
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/System/Library/Fonts/Supplemental/Arial.ttf",
-    "/Library/Fonts/Arial.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+]
+
+# Font folders to scan if no fast-path font exists (guarantees a hit on any OS).
+_FONT_DIRS = [
+    "C:/Windows/Fonts",
+    "/System/Library/Fonts/Supplemental",
+    "/System/Library/Fonts",
+    "/Library/Fonts",
+    str(Path.home() / "Library" / "Fonts"),
+    "/usr/share/fonts",
+    "/usr/local/share/fonts",
+    str(Path.home() / ".fonts"),
 ]
 
 
 def _resolve_font() -> str | None:
+    """Find a usable font on ANY OS (Windows / macOS / Linux). We always hand
+    drawtext a concrete fontfile instead of relying on fontconfig (some ffmpeg
+    builds ship without it), so burned-in captions render identically everywhere.
+    macOS was failing because Arial isn't guaranteed at a fixed path — the
+    directory scan below always finds a system font (Helvetica/SFNS/…)."""
     for p in _FONT_CANDIDATES:
         if Path(p).exists():
             return p
+    # Fallback: first real font file anywhere in the platform font dirs.
+    for ext in ("*.ttf", "*.otf", "*.ttc"):
+        for d in _FONT_DIRS:
+            dp = Path(d)
+            if not dp.is_dir():
+                continue
+            try:
+                hits = sorted(dp.glob(ext)) or sorted(dp.rglob(ext))
+            except OSError:
+                continue
+            if hits:
+                return str(hits[0])
     return None
 
 
