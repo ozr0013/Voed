@@ -214,6 +214,25 @@ def delete_project(
     return {"ok": True}
 
 
+from pydantic import BaseModel, Field
+
+class RenameRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+
+@router.patch("/{project_id}", response_model=ProjectSummary)
+def rename_project(
+    project_id: int,
+    body: RenameRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+) -> ProjectSummary:
+    project = _owned(project_id, user, db)
+    project.name = body.name
+    db.commit()
+    db.refresh(project)
+    return project
+
+
 # --------------------------------------------------------------------------- #
 # Media serving (range-capable via FileResponse)
 # --------------------------------------------------------------------------- #

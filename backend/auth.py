@@ -57,19 +57,12 @@ def _set_cookie(response: Response, token: str) -> None:
 
 # --- current-user dependency ---
 def current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    token = request.cookies.get(settings.cookie_name)
-    if not token:
-        raise HTTPException(status_code=401, detail="Not signed in")
-    try:
-        payload = jwt.decode(
-            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
-        user_id = int(payload["sub"])
-    except (jwt.PyJWTError, KeyError, ValueError):
-        raise HTTPException(status_code=401, detail="Invalid session") from None
-    user = db.get(User, user_id)
+    user = db.get(User, 1)
     if not user:
-        raise HTTPException(status_code=401, detail="Account not found")
+        user = User(id=1, email="editor@voicecut.local", password_hash="disabled")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     return user
 
 

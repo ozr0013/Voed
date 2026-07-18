@@ -143,6 +143,8 @@ export const api = {
   getProject: (id: number) => req<ProjectDetail>(`/api/projects/${id}`),
   deleteProject: (id: number) =>
     req<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" }),
+  renameProject: (id: number, name: string) =>
+    req<ProjectSummary>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
   uploadVideo,
 
   // Same-origin URL for the current edited render (the JWT cookie rides along).
