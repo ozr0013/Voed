@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/api/integrations/drive/callback"
+    # "Sign in with Google" lands on the FRONTEND origin (Vite proxies /api to the
+    # backend) so the session cookie is set for the origin the app actually runs
+    # on. Register this exact URI in the OAuth client's authorized redirect URIs.
+    google_login_redirect_uri: str = "http://localhost:5173/api/auth/google/callback"
 
     @property
     def google_drive_configured(self) -> bool:

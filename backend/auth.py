@@ -9,10 +9,13 @@ from __future__ import annotations
 from datetime import timedelta
 
 import re
+import secrets
 
 import bcrypt
+import httpx
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -22,6 +25,11 @@ from .db import get_db
 from .models import User, utcnow
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Google OAuth (reuses the same client as the Drive export integration).
+_GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+_GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
 
 # --- password + token helpers ---
@@ -134,3 +142,108 @@ def logout(response: Response) -> dict:
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(current_user)) -> UserOut:
     return UserOut(id=user.id, email=user.email)
+
+
+# --- Sign in with Google ---
+def _sign_login_state() -> str:
+    payload = {"purpose": "google_login", "exp": utcnow() + timedelta(minutes=10)}
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def _valid_login_state(state: str) -> bool:
+    try:
+        payload = jwt.decode(
+            state, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+        )
+        return payload.get("purpose") == "google_login"
+    except jwt.PyJWTError:
+        return False
+
+
+def _find_or_create_google_user(db: Session, email: str) -> User:
+    """Match an existing account by email, or create a passwordless one.
+
+    OAuth accounts get a random unguessable password hash so the password login
+    path can never authenticate them — sign-in is only ever via Google.
+    """
+    email = email.strip().lower()
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None:
+        user = User(email=email, password_hash=hash_password(secrets.token_urlsafe(24)))
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
+@router.get("/google/available")
+def google_available() -> dict:
+    """Public: lets the sign-in page decide whether to show the Google button."""
+    return {"configured": settings.google_drive_configured}
+
+
+@router.get("/google/login")
+def google_login() -> RedirectResponse:
+    """Kick off the OAuth dance: redirect the browser to Google's consent screen."""
+    if not settings.google_drive_configured:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured.")
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.google_login_redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "prompt": "select_account",
+        "state": _sign_login_state(),
+    }
+    return RedirectResponse(str(httpx.URL(_GOOGLE_AUTH_URL, params=params)))
+
+
+@router.get("/google/callback")
+def google_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    """Google redirects here with an auth code; exchange it, then start a session.
+
+    On any failure we bounce back to /signin rather than showing a raw error,
+    since this is a full-page navigation, not an API call.
+    """
+    if error or not code or not state or not _valid_login_state(state):
+        return RedirectResponse("/signin?error=google")
+
+    token_resp = httpx.post(
+        _GOOGLE_TOKEN_URL,
+        data={
+            "client_id": settings.google_client_id,
+            "client_secret": settings.google_client_secret,
+            "code": code,
+            "redirect_uri": settings.google_login_redirect_uri,
+            "grant_type": "authorization_code",
+        },
+        timeout=30,
+    )
+    if token_resp.status_code != 200:
+        return RedirectResponse("/signin?error=google")
+
+    access_token = token_resp.json().get("access_token")
+    email = None
+    if access_token:
+        try:
+            info = httpx.get(
+                _GOOGLE_USERINFO_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=15,
+            )
+            if info.status_code == 200:
+                email = info.json().get("email")
+        except httpx.HTTPError:
+            pass
+    if not email:
+        return RedirectResponse("/signin?error=google")
+
+    user = _find_or_create_google_user(db, email)
+    resp = RedirectResponse("/dashboard")
+    _set_cookie(resp, make_token(user.id))
+    return resp

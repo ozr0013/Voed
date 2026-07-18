@@ -137,6 +137,7 @@ export const api = {
   login: (email: string, password: string) =>
     req<User>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+  googleAvailable: () => req<{ configured: boolean }>("/api/auth/google/available"),
 
   // projects
   listProjects: () => req<ProjectSummary[]>("/api/projects"),
