@@ -81,6 +81,16 @@ class Project(Base):
         DateTime, default=utcnow, onupdate=utcnow
     )
 
+    @property
+    def timeline_duration_s(self) -> float:
+        """Length of the current edited timeline (sum of kept clips).
+
+        `duration_s` stays fixed at the source video's length; this shrinks as
+        the user cuts. Waveform peaks are indexed against the source duration.
+        """
+        total = sum(c.duration_s for c in self.clips)
+        return total if total > 0 else self.duration_s
+
     user: Mapped[User] = relationship(back_populates="projects")
     clips: Mapped[list["Clip"]] = relationship(
         back_populates="project",

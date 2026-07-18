@@ -32,7 +32,8 @@ class ProjectSummary(BaseModel):
     name: str
     status: str
     error: str | None = None
-    duration_s: float
+    duration_s: float           # source video length (fixed)
+    timeline_duration_s: float  # current edited timeline length
     width: int
     height: int
     thumb_url: str | None = None
@@ -47,6 +48,7 @@ class ProjectSummary(BaseModel):
             status=p.status,
             error=p.error,
             duration_s=p.duration_s,
+            timeline_duration_s=p.timeline_duration_s,
             width=p.width,
             height=p.height,
             thumb_url=f"/api/projects/{p.id}/media/thumb" if p.thumb_path else None,

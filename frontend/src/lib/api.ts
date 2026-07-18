@@ -35,6 +35,7 @@ export interface ProjectSummary {
   status: string;
   error: string | null;
   duration_s: number;
+  timeline_duration_s: number;
   width: number;
   height: number;
   thumb_url: string | null;

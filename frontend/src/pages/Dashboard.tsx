@@ -84,7 +84,7 @@ export default function Dashboard() {
                 <div className="min-w-0">
                   <div className="truncate font-medium">{p.name}</div>
                   <div className="flex gap-2 text-xs text-white/40">
-                    <span>{fmtDuration(p.duration_s)}</span>
+                    <span>{fmtDuration(p.timeline_duration_s || p.duration_s)}</span>
                     <StatusPill status={p.status} />
                   </div>
                 </div>
