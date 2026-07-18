@@ -115,18 +115,18 @@ export default function MicButton({ disabled = false, hint, onTranscript, onErro
           stop();
         }}
         onPointerLeave={() => recording && stop()}
-        className={`flex h-16 w-16 select-none items-center justify-center rounded-full border text-2xl transition ${
+        className={`flex h-16 w-16 select-none items-center justify-center rounded-full border-2 text-2xl transition ${
           disabled
-            ? "cursor-not-allowed border-edge bg-panel text-white/30"
+            ? "cursor-not-allowed border-coal/30 bg-paper2 text-coal/30"
             : recording
-              ? "scale-110 border-bad bg-bad text-white shadow-lg shadow-bad/40"
-              : "border-accent bg-accent text-white hover:brightness-110 active:scale-95"
+              ? "scale-110 animate-pulse border-coal bg-coal text-paper shadow-hard"
+              : "border-coal bg-flame text-coal shadow-hard hover:-translate-x-[1px] hover:-translate-y-[1px] active:scale-95"
         }`}
         aria-label="Push to talk"
       >
         {state === "transcribing" ? "…" : "🎙"}
       </button>
-      <span className="text-xs text-white/50">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.15em] text-coal/50">{label}</span>
     </div>
   );
 }

@@ -54,11 +54,11 @@ export default function Timeline({
 
   return (
     <div
-      className="select-none rounded-xl border border-edge bg-panel p-3"
+      className="select-none border border-coal bg-paper2 p-3 font-mono"
       data-testid="timeline"
     >
       {/* ruler */}
-      <div className="relative mb-1 h-4 text-[10px] text-white/40">
+      <div className="relative mb-1 h-4 text-[10px] tabular-nums text-coal/40">
         {ticks.map((t, i) => (
           <span
             key={i}
@@ -77,7 +77,7 @@ export default function Timeline({
         className="relative flex h-24 cursor-pointer items-stretch gap-[2px]"
       >
         {clips.length === 0 && (
-          <div className="flex w-full items-center justify-center text-xs text-white/30">
+          <div className="flex w-full items-center justify-center text-[11px] uppercase tracking-[0.15em] text-coal/30">
             timeline empty
           </div>
         )}
@@ -88,7 +88,7 @@ export default function Timeline({
           return (
             <div
               key={c.id}
-              className="relative flex min-w-[3px] flex-col overflow-hidden rounded-md border border-accent/40 bg-accent/15"
+              className="relative flex min-w-[3px] flex-col overflow-hidden border border-coal bg-flame/15"
               style={{ width: `${widthPct}%` }}
               data-clip-id={c.id}
               title={`clip ${i + 1}: ${fmtTime(c.src_start_s, true)}–${fmtTime(
@@ -101,13 +101,13 @@ export default function Timeline({
                 {peaks.map((p, j) => (
                   <div
                     key={j}
-                    className="flex-1 rounded-sm bg-accent/70"
+                    className="flex-1 rounded-sm bg-flame"
                     style={{ height: `${Math.max(4, p * 100)}%` }}
                   />
                 ))}
               </div>
               {/* label */}
-              <div className="truncate px-1.5 pb-1 text-[10px] text-white/70">
+              <div className="truncate px-1.5 pb-1 text-[10px] tabular-nums text-coal/60">
                 {fmtTime(c.src_start_s)}–{fmtTime(c.src_end_s)}
               </div>
             </div>
@@ -116,16 +116,16 @@ export default function Timeline({
 
         {/* playhead */}
         <div
-          className="pointer-events-none absolute top-0 z-10 h-full w-[2px] bg-white"
+          className="pointer-events-none absolute top-0 z-10 h-full w-[2px] bg-coal"
           style={{ left: `${playheadPct}%` }}
         >
-          <div className="absolute -left-[5px] -top-1 h-3 w-3 rotate-45 bg-white" />
+          <div className="absolute -left-[5px] -top-1 h-3 w-3 rotate-45 bg-coal" />
         </div>
       </div>
 
       {/* captions lane */}
       <div className="mt-2">
-        <div className="mb-1 text-[10px] uppercase tracking-wide text-white/30">
+        <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-coal/40">
           Captions
         </div>
         <div className="relative flex h-7 items-stretch gap-[2px]">
@@ -135,10 +135,10 @@ export default function Timeline({
             return (
               <div
                 key={c.id}
-                className={`flex items-center justify-center overflow-hidden rounded border px-1 text-[10px] ${
+                className={`flex items-center justify-center overflow-hidden border px-1 text-[10px] ${
                   c.caption_text
-                    ? "border-good/50 bg-good/15 text-good"
-                    : "border-edge bg-ink/40 text-white/25"
+                    ? "border-[#1f8a57]/50 bg-[#1f8a57]/15 text-[#1f8a57]"
+                    : "border-coal/30 bg-paper text-coal/25"
                 }`}
                 style={{ width: `${widthPct}%` }}
                 title={c.caption_text ?? "no caption"}

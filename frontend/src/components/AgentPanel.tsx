@@ -18,25 +18,25 @@ interface Props {
 
 export default function AgentPanel({ transcript, status, steps = [] }: Props) {
   return (
-    <aside className="flex h-full w-full flex-col rounded-xl border border-edge bg-panel p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-medium">Agent</h2>
-        <span className="text-xs text-white/40">{status ?? "idle"}</span>
+    <aside className="flex h-full w-full flex-col border border-coal bg-paper2 p-4 font-mono text-coal">
+      <div className="mb-3 flex items-center justify-between border-b border-coal/30 pb-3">
+        <h2 className="font-display text-lg font-black uppercase tracking-tight">Agent</h2>
+        <span className="text-[11px] uppercase tracking-widest text-flame">[{status ?? "idle"}]</span>
       </div>
 
-      <div className="mb-3 rounded-lg border border-edge bg-ink/50 p-3 text-sm">
-        <div className="text-[10px] uppercase tracking-wide text-white/30">
+      <div className="mb-4 border border-coal bg-paper p-3 text-sm">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-coal/40">
           You said
         </div>
-        <div className="mt-1 text-white/80">
-          {transcript || <span className="text-white/30">Hold the mic and speak a command…</span>}
+        <div className="mt-1 text-coal/80">
+          {transcript || <span className="text-coal/30">Hold the mic and speak a command…</span>}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mb-2 text-[10px] uppercase tracking-wide text-white/30">Plan</div>
+        <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-coal/40">Plan</div>
         {steps.length === 0 ? (
-          <p className="text-sm text-white/30">
+          <p className="text-sm leading-relaxed text-coal/40">
             No active task. Try “cut the first ten seconds” once the agent is wired
             up.
           </p>
@@ -47,20 +47,20 @@ export default function AgentPanel({ transcript, status, steps = [] }: Props) {
                 <span
                   className={
                     s.status === "done"
-                      ? "text-good"
+                      ? "text-[#1f8a57]"
                       : s.status === "failed"
-                        ? "text-bad"
+                        ? "text-flame"
                         : s.status === "running"
-                          ? "text-warn"
-                          : "text-white/30"
+                          ? "text-flame"
+                          : "text-coal/30"
                   }
                 >
                   {s.status === "done" ? "✓" : s.status === "failed" ? "✗" : "○"}
                 </span>
                 <div>
-                  <div>{s.label}</div>
+                  <div className="text-coal/80">{s.label}</div>
                   {s.observed && (
-                    <div className="text-xs text-white/40">{s.observed}</div>
+                    <div className="text-xs text-coal/40">{s.observed}</div>
                   )}
                 </div>
               </li>

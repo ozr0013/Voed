@@ -1,4 +1,4 @@
-# VoiceCut launcher (Windows / PowerShell) — primary entry point on Windows.
+# VoiceCut launcher (Windows / PowerShell) - primary entry point on Windows.
 #
 #   powershell -ExecutionPolicy Bypass -File .\start.ps1
 #
@@ -10,7 +10,7 @@ Set-Location $root
 
 function Have($name) { [bool](Get-Command $name -ErrorAction SilentlyContinue) }
 
-Write-Host "VoiceCut — local voice-to-action video editor" -ForegroundColor Cyan
+Write-Host "VoiceCut - local voice-to-action video editor" -ForegroundColor Cyan
 Write-Host "Checking local dependencies..." -ForegroundColor Cyan
 
 # --- ffmpeg / ffprobe ---

@@ -26,7 +26,7 @@ const VideoPreview = forwardRef<HTMLVideoElement, Props>(function VideoPreview(
   };
 
   return (
-    <div className="relative flex-1 overflow-hidden rounded-xl border border-edge bg-black">
+    <div className="relative flex-1 overflow-hidden border border-coal bg-coal">
       {src ? (
         <video
           ref={ref}
@@ -47,19 +47,19 @@ const VideoPreview = forwardRef<HTMLVideoElement, Props>(function VideoPreview(
           onClick={toggle}
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-sm text-white/40">
+        <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.15em] text-paper/40">
           Preview not ready…
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-3 bg-gradient-to-t from-black/70 to-transparent px-4 py-3 text-sm">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-3 bg-gradient-to-t from-coal/80 to-transparent px-4 py-3 font-mono text-sm">
         <button
           onClick={toggle}
-          className="pointer-events-auto rounded-md bg-white/10 px-3 py-1 hover:bg-white/20"
+          className="pointer-events-auto border border-paper/30 bg-paper/10 px-3 py-1 text-paper hover:border-flame hover:text-flame"
         >
           {playing ? "❚❚" : "▶"}
         </button>
-        <span className="tabular-nums text-white/70">
+        <span className="tabular-nums text-paper/70">
           {fmtTime(cur, true)} / {fmtTime(dur, true)}
         </span>
       </div>

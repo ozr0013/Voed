@@ -11,22 +11,23 @@ import { fmtTime } from "../lib/format";
 import { isSpeechMuted, setSpeechMuted, speak } from "../lib/voice";
 
 function TranscriptionChip({ status }: { status: string }) {
+  const base = "border px-3 py-1 text-[11px] font-bold uppercase tracking-widest";
   if (status === "ready") {
     return (
-      <span className="rounded-full border border-good/40 bg-good/10 px-3 py-1 text-xs text-good">
+      <span className={`${base} border-[#1f8a57]/50 bg-[#1f8a57]/10 text-[#1f8a57]`}>
         transcript ready
       </span>
     );
   }
   if (status === "error") {
     return (
-      <span className="rounded-full border border-bad/40 bg-bad/10 px-3 py-1 text-xs text-bad">
+      <span className={`${base} border-flame/60 bg-flame/10 text-flame`}>
         transcript failed
       </span>
     );
   }
   return (
-    <span className="rounded-full border border-warn/40 bg-warn/10 px-3 py-1 text-xs text-warn">
+    <span className={`${base} border-flame/50 bg-flame/10 text-flame`}>
       transcribing audio… (time-based edits work now)
     </span>
   );
@@ -131,30 +132,44 @@ export default function Editor() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-3xl px-6 py-16">
-        <Link to="/dashboard" className="text-sm text-white/50 hover:text-white">
-          ← Dashboard
-        </Link>
-        <p className="mt-4 text-bad">{error}</p>
+      <div className="min-h-screen bg-paper font-mono text-coal">
+        <div className="mx-auto max-w-3xl px-6 py-16">
+          <Link
+            to="/dashboard"
+            className="text-xs font-bold uppercase tracking-[0.18em] text-coal/60 hover:text-coal"
+          >
+            ← Dashboard
+          </Link>
+          <p className="mt-4 border border-flame bg-flame/10 px-3 py-2 text-sm text-flame">{error}</p>
+        </div>
       </div>
     );
   }
   if (!project) {
-    return <div className="p-8 text-sm text-white/50">Loading editor…</div>;
+    return (
+      <div className="grid min-h-screen place-items-center bg-paper font-mono text-xs uppercase tracking-[0.18em] text-coal/50">
+        Loading editor…
+      </div>
+    );
   }
 
   const processing = project.status !== "ready";
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-paper font-mono text-coal">
       {/* top bar */}
-      <header className="flex items-center justify-between border-b border-edge px-5 py-3">
-        <div className="flex items-center gap-3">
-          <Link to="/dashboard" className="text-sm text-white/50 hover:text-white">
+      <header className="flex items-center justify-between border-b border-coal px-5 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            to="/dashboard"
+            className="shrink-0 text-xs font-bold uppercase tracking-[0.15em] text-coal/60 hover:text-coal"
+          >
             ← Dashboard
           </Link>
-          <span className="font-medium">{project.name}</span>
-          <span className="text-xs text-white/40">
+          <span className="truncate font-display text-base font-bold uppercase tracking-tight">
+            {project.name}
+          </span>
+          <span className="shrink-0 text-[11px] uppercase tracking-widest text-coal/40">
             {project.width}×{project.height} · {fmtTime(project.timeline_duration_s, true)}
           </span>
         </div>
@@ -166,10 +181,10 @@ export default function Editor() {
               setSpeechMuted(next);
             }}
             title={muted ? "Spoken output off — click to enable" : "Spoken output on — click to mute"}
-            className={`rounded-full border px-3 py-1 text-xs ${
+            className={`border px-3 py-1 text-[11px] font-bold uppercase tracking-widest transition-colors ${
               muted
-                ? "border-edge bg-panel text-white/50"
-                : "border-accent/50 bg-accent/10 text-accent"
+                ? "border-coal/40 bg-paper2 text-coal/50"
+                : "border-flame bg-flame/10 text-flame"
             }`}
           >
             {muted ? "🔇 voice off" : "🔊 voice on"}
@@ -179,10 +194,10 @@ export default function Editor() {
       </header>
 
       {/* editor capture region — this is what the agent screenshots */}
-      <div id="editor-capture" className="flex min-h-0 flex-1 gap-4 p-4">
+      <div id="editor-capture" className="flex min-h-0 flex-1 gap-4 bg-paper p-4">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           {processing ? (
-            <div className="flex flex-1 items-center justify-center rounded-xl border border-edge bg-panel text-sm text-white/40">
+            <div className="flex flex-1 items-center justify-center border border-coal bg-paper2 text-xs uppercase tracking-[0.15em] text-coal/40">
               {project.status === "error"
                 ? `Processing failed: ${project.error}`
                 : "Processing video…"}
@@ -215,7 +230,7 @@ export default function Editor() {
       </div>
 
       {/* mic */}
-      <div className="flex items-center justify-center gap-6 border-t border-edge py-4">
+      <div className="flex items-center justify-center gap-6 border-t border-coal py-4">
         <MicButton
           disabled={processing || running}
           hint={
@@ -231,7 +246,7 @@ export default function Editor() {
         {running && (
           <button
             onClick={stopRun}
-            className="rounded-lg border border-bad/50 bg-bad/10 px-4 py-2 text-sm text-bad hover:bg-bad/20"
+            className="border border-flame bg-flame/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-flame transition-colors hover:bg-flame/20"
           >
             Stop
           </button>

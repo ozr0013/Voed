@@ -38,8 +38,8 @@ export default function UploadDropzone({ onDone }: { onDone: (projectId: number)
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
       onClick={() => progress === null && inputRef.current?.click()}
-      className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-10 text-center transition ${
-        dragging ? "border-accent bg-accent/10" : "border-edge bg-panel hover:border-accent/60"
+      className={`flex cursor-pointer flex-col items-center justify-center gap-2 border-2 border-dashed p-12 text-center font-mono transition ${
+        dragging ? "border-flame bg-flame/5" : "border-coal/40 bg-paper2 hover:border-flame"
       }`}
     >
       <input
@@ -51,25 +51,31 @@ export default function UploadDropzone({ onDone }: { onDone: (projectId: number)
       />
       {progress === null ? (
         <>
-          <div className="text-lg font-medium">Drop a video to start a new project</div>
-          <div className="text-sm text-white/50">
+          <div className="font-display text-xl font-black uppercase tracking-tight text-coal">
+            Drop a video to start a new project
+          </div>
+          <div className="text-xs uppercase tracking-[0.15em] text-coal/50">
             or click to browse — MP4, MOV, MKV, WEBM
           </div>
         </>
       ) : (
         <div className="w-full max-w-md">
-          <div className="mb-2 text-sm text-white/70">
+          <div className="mb-2 text-xs uppercase tracking-widest text-coal/70">
             Uploading… {Math.round(progress * 100)}%
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-edge">
+          <div className="h-2.5 w-full overflow-hidden border border-coal bg-paper">
             <div
-              className="h-full bg-accent transition-all"
+              className="h-full bg-flame transition-all"
               style={{ width: `${progress * 100}%` }}
             />
           </div>
         </div>
       )}
-      {error && <div className="mt-2 text-sm text-bad">{error}</div>}
+      {error && (
+        <div className="mt-2 border border-flame bg-flame/10 px-3 py-1.5 text-xs font-medium text-flame">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
