@@ -10,6 +10,11 @@ node_modules/
 frontend/dist/
 .vite/
 
+# TS build artifacts (composite emit)
+frontend/vite.config.js
+frontend/vite.config.d.ts
+*.tsbuildinfo
+
 # VoiceCut runtime data
 data/
 storage/
