@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import AgentPanel, { type AgentStepView } from "../components/AgentPanel";
+import AgentPanel, { type AgentRunView } from "../components/AgentPanel";
 import ExportPanel from "../components/ExportPanel";
 import MicButton from "../components/MicButton";
 import Timeline from "../components/Timeline";
@@ -41,15 +41,21 @@ export default function Editor() {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [transcript, setTranscript] = useState<string | null>(null);
+  const [runs, setRuns] = useState<AgentRunView[]>([]);
   const [agentStatus, setAgentStatus] = useState("idle");
-  const [steps, setSteps] = useState<Record<number, AgentStepView>>({});
   const [running, setRunning] = useState(false);
   const [muted, setMuted] = useState(isSpeechMuted());
   const videoRef = useRef<HTMLVideoElement>(null);
   const cancelRef = useRef(false);
   const runningRef = useRef(false);
   const transcribeReq = useRef(false);
+  const runKey = useRef(0);
+
+  // Update the CURRENT (last) run in the conversation.
+  const patchCurrentRun = (fn: (r: AgentRunView) => AgentRunView) =>
+    setRuns((prev) =>
+      prev.length ? [...prev.slice(0, -1), fn(prev[prev.length - 1])] : prev,
+    );
 
   const load = useCallback(async () => {
     try {
@@ -69,6 +75,46 @@ export default function Editor() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Restore the FULL agent conversation after navigating away / refreshing: every
+  // run and its steps are persisted server-side, so the panel shows the whole
+  // history stacked (not just the last command). Skips while a run is active.
+  useEffect(() => {
+    if (runningRef.current) return;
+    let cancelled = false;
+    api
+      .agentRuns(projectId)
+      .then(({ runs: hist }) => {
+        if (cancelled || runningRef.current) return;
+        setRuns(
+          hist.map((r) => ({
+            key: `srv-${r.id}`,
+            goal: r.goal,
+            status: r.status,
+            steps: Object.fromEntries(
+              r.steps.map((s) => [
+                s.index,
+                {
+                  index: s.index,
+                  label: s.label,
+                  status: s.status,
+                  thought: s.thought ?? undefined,
+                  expectedResult: s.expectedResult ?? undefined,
+                  observed: s.observed ?? undefined,
+                  shotIn: s.shotIn ?? undefined,
+                  shotOut: s.shotOut ?? undefined,
+                },
+              ]),
+            ),
+          })),
+        );
+        if (hist.length) setAgentStatus(hist[hist.length - 1].status);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   // Self-heal: if a video's speech was never transcribed, kick it off once on
   // open. The endpoint is idempotent, and the poll below picks up "ready".
@@ -96,21 +142,29 @@ export default function Editor() {
     setCurrentTime(t);
   };
 
-  const upsertStep = (e: StepEvent) =>
-    setSteps((prev) => ({ ...prev, [e.index]: { ...prev[e.index], ...e } }));
-
   // The plan->act->verify agent loop, driven by a spoken (or typed) command.
   const onCommand = async (text: string) => {
     if (runningRef.current) return;
-    setTranscript(text);
-    setSteps({});
+    // Append a new turn — previous turns stay in the conversation above.
+    setRuns((prev) => [
+      ...prev,
+      { key: `local-${runKey.current++}`, goal: text, status: "running", steps: {} },
+    ]);
+    setAgentStatus("running");
     setRunning(true);
     runningRef.current = true;
     cancelRef.current = false;
     try {
       await runAgent(projectId, text, {
-        onStatus: setAgentStatus,
-        onStep: upsertStep,
+        onStatus: (s) => {
+          setAgentStatus(s);
+          patchCurrentRun((r) => ({ ...r, status: s }));
+        },
+        onStep: (e: StepEvent) =>
+          patchCurrentRun((r) => ({
+            ...r,
+            steps: { ...r.steps, [e.index]: { ...r.steps[e.index], ...e } },
+          })),
         onSeek: seek,
         refetchProject: load,
         shouldCancel: () => cancelRef.current,
@@ -243,11 +297,7 @@ export default function Editor() {
 
         <div className="flex w-80 shrink-0 flex-col gap-4">
           <div className="min-h-0 flex-1">
-            <AgentPanel
-              transcript={transcript}
-              status={agentStatus}
-              steps={Object.values(steps).sort((a, b) => a.index - b.index)}
-            />
+            <AgentPanel runs={runs} status={agentStatus} />
           </div>
           <ExportPanel projectId={projectId} ready={!processing} />
         </div>

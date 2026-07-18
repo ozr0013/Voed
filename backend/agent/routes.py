@@ -213,6 +213,67 @@ async def agent_verify(
     }
 
 
+def _label_for(action: dict | None) -> str:
+    """Human label for a persisted step's action (mirrors the frontend)."""
+    a = action or {}
+    name = a.get("name")
+    if name == "cut_range":
+        return f"Cut {a.get('start_s', 0)}s–{a.get('end_s', '?')}s"
+    if name == "trim":
+        return f"Trim to {a.get('start_s', 0)}s–{a.get('end_s', '?')}s"
+    if name == "mute_range":
+        return f"Mute {a.get('start_s', 0)}s–{a.get('end_s', '?')}s"
+    return (name or "step").replace("_", " ")
+
+
+def _shot_url(path: str | None) -> str | None:
+    return f"/api/agent/shot?path={path}" if path else None
+
+
+def _step_view(s) -> dict:
+    status = "done" if s.verify_success is True else "failed" if s.verify_success is False else "done"
+    return {
+        "index": s.step_index,
+        "label": _label_for(s.action),
+        "status": status,
+        "thought": s.thought,
+        "expectedResult": s.expected_result,
+        "observed": s.verify_observed,
+        "shotIn": _shot_url(s.screenshot_in_path),
+        "shotOut": _shot_url(s.screenshot_out_path),
+    }
+
+
+@router.get("/runs")
+def list_runs(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """All (recent) runs + their steps for a project, oldest→newest, so the Editor
+    can restore the FULL agent conversation — each command stacks in the panel
+    instead of replacing the last one."""
+    project = _owned(project_id, user, db)
+    runs = (
+        db.query(AgentRun)
+        .filter(AgentRun.project_id == project.id)
+        .order_by(AgentRun.id.desc())
+        .limit(40)
+        .all()
+    )
+    out = [
+        {
+            "id": run.id,
+            "goal": run.goal,
+            "status": run.status,
+            "steps": [_step_view(s) for s in run.steps],
+        }
+        for run in reversed(runs)
+        if run.steps  # skip empty runs (nothing to show)
+    ]
+    return {"runs": out}
+
+
 @router.get("/shot")
 def get_shot(
     path: str, user: User = Depends(current_user)

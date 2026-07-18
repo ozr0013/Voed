@@ -41,6 +41,29 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+/* Animated equalizer — the dashboard hero visual (mirrors the logo waveform). */
+function Equalizer() {
+  return (
+    <div
+      aria-hidden
+      className="hidden h-40 items-end justify-center gap-[5px] sm:flex"
+    >
+      {Array.from({ length: 34 }).map((_, i) => (
+        <span
+          key={i}
+          className="eq-bar w-[5px] rounded-full bg-flame"
+          style={{
+            height: "100%",
+            opacity: 0.35 + (i % 4) * 0.2,
+            animationDelay: `${((i * 7) % 20) * 0.06}s`,
+            animationDuration: `${1 + ((i * 3) % 6) * 0.14}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
@@ -62,6 +85,10 @@ export default function Dashboard() {
     refresh();
   };
 
+  const totalMin = Math.round(
+    projects.reduce((a, p) => a + (p.timeline_duration_s || p.duration_s || 0), 0) / 60,
+  );
+
   return (
     <div className="relative min-h-screen bg-paper font-mono text-coal">
       {/* matte grain overlay */}
@@ -74,13 +101,18 @@ export default function Dashboard() {
       />
 
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        {/* header */}
-        <header className="flex items-center justify-between border-b border-coal py-6">
-          <div>
-            <h1 className="font-display text-3xl font-black uppercase leading-none tracking-tight">
-              Your projects
-            </h1>
-            <p className="mt-2 text-xs uppercase tracking-[0.15em] text-coal/50">{user?.email}</p>
+        {/* header — Voed logo + account */}
+        <header className="flex items-center justify-between border-b border-coal py-5">
+          <div className="flex items-center gap-3">
+            <img src="/voed-mark.svg" alt="Voed" className="h-12 w-auto" />
+            <div>
+              <div className="font-display text-xl font-black lowercase leading-none tracking-tight">
+                voed
+              </div>
+              <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-coal/45">
+                {user?.email}
+              </div>
+            </div>
           </div>
           <button
             onClick={() => logout().then(() => nav("/"))}
@@ -90,9 +122,52 @@ export default function Dashboard() {
           </button>
         </header>
 
+        {/* hero — cool visual + what this is */}
+        <section className="rise relative mt-8 overflow-hidden border border-coal bg-coal text-paper shadow-hard">
+          <div className="relative z-10 grid gap-8 px-6 py-10 sm:grid-cols-[1.5fr_1fr] sm:items-center sm:px-10 sm:py-12">
+            <div>
+              <div className="inline-flex items-center gap-2 border border-paper/20 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-flame">
+                <Sparkle className="h-3 w-3" />
+                Voice-to-action studio
+              </div>
+              <h1 className="mt-4 font-display text-4xl font-black uppercase leading-[0.92] tracking-tight sm:text-5xl">
+                Edit video
+                <br />
+                <span className="text-flame">by talking.</span>
+              </h1>
+              <p className="mt-4 max-w-md text-sm leading-relaxed text-paper/55">
+                Drop a clip, hold the mic, and tell the agent what to change — cut,
+                caption, colour, speed. It watches your screen and does the work.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-x-9 gap-y-4">
+                {[
+                  [String(projects.length), "projects", "text-paper"],
+                  [totalMin ? `${totalMin}` : "0", "min of footage", "text-paper"],
+                  ["100%", "local · 0 cloud", "text-flame"],
+                ].map(([n, label, cls]) => (
+                  <div key={label}>
+                    <div className={`font-display text-2xl font-black leading-none ${cls}`}>
+                      {n}
+                    </div>
+                    <div className="mt-1.5 text-[10px] uppercase tracking-[0.16em] text-paper/40">
+                      {label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Equalizer />
+          </div>
+        </section>
+
         <div className="my-8">
           <UploadDropzone onDone={(id) => nav(`/editor/${id}`)} />
         </div>
+
+        <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-black uppercase tracking-tight">
+          Your projects
+          <span className="text-xs font-bold text-coal/35">({projects.length})</span>
+        </h2>
 
         {projects.length === 0 ? (
           <p className="border border-dashed border-coal/40 py-16 text-center text-xs uppercase tracking-[0.15em] text-coal/40">

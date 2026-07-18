@@ -126,6 +126,24 @@ async function uploadVideo(
   return complete.json();
 }
 
+export interface AgentStepHistory {
+  index: number;
+  label: string;
+  status: "pending" | "running" | "done" | "failed";
+  thought?: string | null;
+  expectedResult?: string | null;
+  observed?: string | null;
+  shotIn?: string | null;
+  shotOut?: string | null;
+}
+
+export interface AgentRunHistory {
+  id: number;
+  goal: string;
+  status: string;
+  steps: AgentStepHistory[];
+}
+
 export const api = {
   health: () => req<HealthReport>("/api/health"),
   ping: () => req<{ ok: boolean }>("/api/ping"),
@@ -144,6 +162,8 @@ export const api = {
   getProject: (id: number) => req<ProjectDetail>(`/api/projects/${id}`),
   transcribe: (id: number) =>
     req<{ status: string }>(`/api/projects/${id}/transcribe`, { method: "POST" }),
+  agentRuns: (projectId: number) =>
+    req<{ runs: AgentRunHistory[] }>(`/api/agent/runs?project_id=${projectId}`),
   deleteProject: (id: number) =>
     req<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" }),
   uploadVideo,

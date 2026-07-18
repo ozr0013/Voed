@@ -72,6 +72,47 @@
   }
 }
 
+/* Slim, themed scrollbar (agent panel, etc.) instead of the chunky default. */
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(23, 21, 15, 0.28) transparent;
+}
+.scroll-slim::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: rgba(23, 21, 15, 0.25);
+  border-radius: 999px;
+}
+.scroll-slim::-webkit-scrollbar-thumb:hover {
+  background: rgba(239, 90, 36, 0.6);
+}
+
+/* Equalizer bars for the dashboard hero visual. */
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.28);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.eq-bar {
+  transform-origin: bottom;
+  animation: eq 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .eq-bar {
+    animation: none;
+    transform: scaleY(0.6);
+  }
+}
+
 html,
 body,
 #root {
