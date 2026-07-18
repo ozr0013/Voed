@@ -9,23 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@base-ui/react": "^1.6.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
-    "next-themes": "^0.4.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
-    "tailwind-merge": "^3.6.0",
-    "three": "^0.185.1"
+    "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",

@@ -43,7 +43,7 @@ export async function captureEditor(maxWidth = 1280): Promise<Blob> {
   try {
     const rendered = await withTimeout(
       html2canvas(node, {
-        backgroundColor: "#000000",
+        backgroundColor: "#0b0e14",
         scale: 1,
         logging: false,
         useCORS: true,
