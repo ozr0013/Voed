@@ -52,6 +52,16 @@ $py = "$root\.venv\Scripts\python.exe"
 & $py -m pip install --quiet -r "$root\requirements.txt"
 Write-Host "  [ok] backend deps" -ForegroundColor Green
 
+# --- Piper voice (first run only) ---
+$voice = if ($env:VOICECUT_PIPER_VOICE) { $env:VOICECUT_PIPER_VOICE } else { "en_US-lessac-medium" }
+if (-not (Test-Path "$root\models\piper\$voice.onnx")) {
+  Write-Host "  [..] Downloading Piper voice $voice..." -ForegroundColor Yellow
+  New-Item -ItemType Directory -Force -Path "$root\models\piper" | Out-Null
+  & $py -m piper.download_voices --download-dir "$root\models\piper" $voice
+}
+Write-Host "  [ok] Piper voice $voice" -ForegroundColor Green
+Write-Host "  [i]  faster-whisper 'small' downloads on first transcription (~460 MB, one-time)" -ForegroundColor DarkGray
+
 # --- Frontend deps ---
 if (-not (Test-Path "$root\frontend\node_modules")) {
   Write-Host "Installing frontend deps..." -ForegroundColor Cyan

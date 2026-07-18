@@ -52,6 +52,16 @@ PY="$ROOT/.venv/bin/python"
 "$PY" -m pip install --quiet -r "$ROOT/requirements.txt"
 green "  [ok] backend deps"
 
+# Piper voice (first run only)
+VOICE="${VOICECUT_PIPER_VOICE:-en_US-lessac-medium}"
+if [ ! -f "$ROOT/models/piper/$VOICE.onnx" ]; then
+  yellow "  [..] Downloading Piper voice $VOICE..."
+  mkdir -p "$ROOT/models/piper"
+  "$PY" -m piper.download_voices --download-dir "$ROOT/models/piper" "$VOICE"
+fi
+green "  [ok] Piper voice $VOICE"
+echo "  [i]  faster-whisper 'small' downloads on first transcription (~460 MB, one-time)"
+
 # Frontend deps
 if [ ! -d "$ROOT/frontend/node_modules" ]; then
   echo "Installing frontend deps..."

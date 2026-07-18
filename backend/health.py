@@ -84,12 +84,37 @@ async def check_model() -> Check:
     )
 
 
+def check_whisper() -> Check:
+    try:
+        import faster_whisper  # noqa: F401
+    except ImportError:
+        return Check(
+            "whisper", False, "faster-whisper not installed",
+            fix="pip install -r requirements.txt",
+        )
+    return Check("whisper", True, f"faster-whisper ready ({settings.whisper_model})")
+
+
+def check_piper() -> Check:
+    if settings.piper_model_path.exists():
+        return Check("piper", True, f"voice {settings.piper_voice} installed")
+    return Check(
+        "piper", False, f"voice {settings.piper_voice} not downloaded",
+        fix=(
+            f"python -m piper.download_voices --download-dir "
+            f"{settings.piper_dir} {settings.piper_voice}"
+        ),
+    )
+
+
 async def full_report() -> dict:
     checks = [
         check_ffmpeg(),
         check_ffprobe(),
         await check_ollama(),
         await check_model(),
+        check_whisper(),
+        check_piper(),
     ]
     return {
         "ok": all(c.ok for c in checks),

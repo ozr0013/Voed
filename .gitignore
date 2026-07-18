@@ -18,6 +18,7 @@ frontend/vite.config.d.ts
 # VoiceCut runtime data
 data/
 storage/
+models/
 *.sqlite
 *.sqlite3
 *.db

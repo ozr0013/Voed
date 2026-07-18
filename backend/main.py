@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, health, upload
+from . import auth, health, stt, tts, upload
 from .config import ROOT, settings
 from .db import init_db
 
@@ -66,6 +66,8 @@ async def ping() -> dict:
 
 app.include_router(auth.router)
 app.include_router(upload.router)
+app.include_router(stt.router)
+app.include_router(tts.router)
 
 
 # --- Static frontend (production build) ---

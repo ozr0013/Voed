@@ -6,6 +6,7 @@ import Timeline from "../components/Timeline";
 import VideoPreview from "../components/VideoPreview";
 import { api, type ProjectDetail } from "../lib/api";
 import { fmtTime } from "../lib/format";
+import { speak } from "../lib/voice";
 
 function TranscriptionChip({ status }: { status: string }) {
   if (status === "ready") {
@@ -35,7 +36,24 @@ export default function Editor() {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [agentStatus, setAgentStatus] = useState("idle");
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Milestone 4: a spoken command is transcribed and echoed back by voice.
+  // The plan->act->verify agent loop is wired in later milestones.
+  const onCommand = (text: string) => {
+    setTranscript(text);
+    setAgentStatus("heard");
+    // instant sub-second acknowledgment before any planning happens
+    speak(`On it. ${text}`);
+  };
+
+  const onMicError = (msg: string) => {
+    setTranscript(null);
+    setAgentStatus("error");
+    speak(msg);
+  };
 
   const load = useCallback(() => {
     api.getProject(projectId).then(setProject).catch((e) => setError(String(e.message)));
@@ -119,15 +137,17 @@ export default function Editor() {
         </div>
 
         <div className="w-80 shrink-0">
-          <AgentPanel />
+          <AgentPanel transcript={transcript} status={agentStatus} />
         </div>
       </div>
 
       {/* mic */}
       <div className="flex items-center justify-center border-t border-edge py-4">
         <MicButton
-          disabled
-          hint={processing ? "Waiting for video to finish processing" : "Voice control arrives in milestone 4"}
+          disabled={processing}
+          hint={processing ? "Waiting for video to finish processing" : undefined}
+          onTranscript={onCommand}
+          onError={onMicError}
         />
       </div>
     </div>

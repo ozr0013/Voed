@@ -16,6 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
 STORAGE_DIR = ROOT / "storage"
+MODELS_DIR = ROOT / "models"
 
 
 class Settings(BaseSettings):
@@ -34,6 +35,15 @@ class Settings(BaseSettings):
     whisper_model: str = "small"   # faster-whisper size for STT
     whisper_compute: str = "int8"  # CPU-friendly; use "float16" on GPU
     piper_voice: str = "en_US-lessac-medium"
+    piper_dir: str = str(MODELS_DIR / "piper")
+
+    @property
+    def piper_model_path(self) -> Path:
+        return Path(self.piper_dir) / f"{self.piper_voice}.onnx"
+
+    @property
+    def piper_config_path(self) -> Path:
+        return Path(self.piper_dir) / f"{self.piper_voice}.onnx.json"
 
     # --- Storage ---
     db_url: str = f"sqlite:///{(DATA_DIR / 'voicecut.sqlite').as_posix()}"
