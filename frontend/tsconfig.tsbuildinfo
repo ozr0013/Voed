@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/systemstatus.tsx","./src/lib/api.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/systemstatus.tsx","./src/components/uploaddropzone.tsx","./src/lib/api.ts","./src/lib/auth.tsx","./src/pages/authform.tsx","./src/pages/dashboard.tsx","./src/pages/editor.tsx","./src/pages/landing.tsx"],"version":"5.9.3"}

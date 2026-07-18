@@ -1,32 +1,45 @@
-import { Route, Routes } from "react-router-dom";
-import SystemStatus from "./components/SystemStatus";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./lib/auth";
+import AuthForm from "./pages/AuthForm";
+import Dashboard from "./pages/Dashboard";
+import Editor from "./pages/Editor";
+import Landing from "./pages/Landing";
 
-// Milestone 1: a single scaffold screen that proves the FastAPI <-> Vite wiring
-// and the local-service health checks work. Real routes (Landing, SignIn,
-// SignUp, Dashboard, Editor) land in later milestones.
-function Scaffold() {
-  return (
-    <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-center gap-6 px-6 py-16">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">VoiceCut</h1>
-        <p className="mt-1 text-white/60">
-          Edit video by talking. 100% local — Gemma, Whisper, Piper, ffmpeg on
-          this machine. Nothing leaves your computer.
-        </p>
-      </header>
-      <SystemStatus />
-      <p className="text-xs text-white/30">
-        Scaffold build (milestone 1). Auth, upload, editor, and the voice agent
-        arrive in the next milestones.
-      </p>
-    </div>
-  );
+function RequireAuth({ children }: { children: JSX.Element }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <div className="p-8 text-sm text-white/50">Loading…</div>;
+  }
+  return user ? children : <Navigate to="/signin" replace />;
 }
 
 export default function App() {
+  const { user, loading } = useAuth();
   return (
     <Routes>
-      <Route path="*" element={<Scaffold />} />
+      <Route
+        path="/"
+        element={loading ? null : user ? <Navigate to="/dashboard" replace /> : <Landing />}
+      />
+      <Route path="/signin" element={<AuthForm mode="signin" />} />
+      <Route path="/signup" element={<AuthForm mode="signup" />} />
+      <Route
+        path="/dashboard"
+        element={
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/editor/:id"
+        element={
+          <RequireAuth>
+            <Editor />
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

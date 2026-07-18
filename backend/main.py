@@ -7,6 +7,7 @@ and judges can reach the app via the host's IP.
 from __future__ import annotations
 
 import socket
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -14,10 +15,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import health
+from . import auth, health, upload
 from .config import ROOT, settings
+from .db import init_db
 
-app = FastAPI(title="VoiceCut", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):  # noqa: ARG001
+    init_db()
+    yield
+
+
+app = FastAPI(title="VoiceCut", version="0.1.0", lifespan=lifespan)
 
 # LAN access: the frontend dev server (Vite, :5173) and any teammate machine on
 # the local network. We allow all origins because this only ever runs on a
@@ -53,6 +62,10 @@ async def api_health() -> dict:
 @app.get("/api/ping")
 async def ping() -> dict:
     return {"ok": True, "app": "voicecut"}
+
+
+app.include_router(auth.router)
+app.include_router(upload.router)
 
 
 # --- Static frontend (production build) ---

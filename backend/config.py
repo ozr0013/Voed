@@ -40,7 +40,9 @@ class Settings(BaseSettings):
     storage_dir: str = str(STORAGE_DIR)
 
     # --- Auth ---
-    jwt_secret: str = "dev-only-change-me"   # regenerated in start scripts for real runs
+    # 32+ bytes so HS256 is happy in dev; start scripts inject a per-machine
+    # random secret via VOICECUT_JWT_SECRET for real runs.
+    jwt_secret: str = "voicecut-dev-only-insecure-secret-change-me"
     jwt_algorithm: str = "HS256"
     jwt_ttl_hours: int = 720
     cookie_name: str = "voicecut_session"
