@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     max_steps: int = 12
     planner_max_tokens: int = 250
     verifier_max_tokens: int = 60
+    # add_subtitles needs the word-level transcript, which is produced by a
+    # background thread after upload. If the user asks for subtitles before it
+    # finishes, the agent waits up to this many seconds for it rather than failing.
+    subtitle_wait_s: int = 180
 
     @property
     def storage_path(self) -> Path:

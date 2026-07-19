@@ -120,10 +120,25 @@ def _commit_new_timeline(
 
 
 def _clamp_range(project: Project, action: Action, what: str) -> tuple[float, float]:
-    """Validate + clamp an action's [start_s, end_s] against the timeline length."""
+    """Validate + clamp an action's [start_s, end_s] against the timeline length.
+
+    The end of the range is resolved from `end_s` if given, otherwise from
+    `duration_s` (start_s + duration_s) — the model often phrases "the first 10
+    seconds" as start_s=0 + duration_s=10. If NEITHER is provided we refuse
+    rather than silently defaulting to the whole timeline (which used to turn
+    "mute the first 10s" into "mute the entire video")."""
     dur = ops.total_duration(_segments(project))
     a = max(0.0, action.start_s or 0.0)
-    b = min(dur, action.end_s if action.end_s is not None else dur)
+    if action.end_s is not None:
+        b = action.end_s
+    elif action.duration_s is not None:
+        b = a + action.duration_s
+    else:
+        raise EditError(
+            f"{what} needs an end_s (or duration_s). Refusing to apply it to the "
+            "whole timeline."
+        )
+    b = min(dur, b)
     if b <= a:
         raise EditError(f"{what} needs end_s greater than start_s.")
     return a, b
@@ -491,7 +506,16 @@ def _exec_add_text(db, project, action):
 def _exec_add_subtitles(db, project, action):
     words = project.transcript or []
     if not words:
-        raise EditError("No transcript yet — subtitles need transcribed speech.")
+        status = project.transcript_status
+        if status == "processing":
+            raise EditError(
+                "Still transcribing the audio — try 'add subtitles' again in a few seconds."
+            )
+        if status == "error":
+            raise EditError("Transcription failed, so there's no speech to caption.")
+        raise EditError(
+            "No speech was detected in this video, so there are no subtitles to add."
+        )
     segs = _segments(project)
     # group words into ~3s / 8-word cues, mapped to timeline time
     cues: list[dict] = []

@@ -73,19 +73,30 @@ export default function Editor() {
   }, [projectId, nav]);
 
   useEffect(() => {
+    setProject(null);
     load();
   }, [load]);
 
-  // Restore the FULL agent conversation after navigating away / refreshing: every
-  // run and its steps are persisted server-side, so the panel shows the whole
-  // history stacked (not just the last command). Skips while a run is active.
+  // Reset agent panel immediately when the route project id changes (Editor can
+  // be reused across /editor/:id without unmounting, e.g. browser history).
+  useEffect(() => {
+    cancelRef.current = true;
+    runningRef.current = false;
+    setRunning(false);
+    setRuns([]);
+    setAgentStatus("idle");
+    runKey.current = 0;
+  }, [projectId]);
+
+  // Restore agent conversation for THIS project only. Skips while a run is active.
   useEffect(() => {
     if (runningRef.current) return;
     let cancelled = false;
+    const pid = projectId;
     api
-      .agentRuns(projectId)
+      .agentRuns(pid)
       .then(({ runs: hist }) => {
-        if (cancelled || runningRef.current) return;
+        if (cancelled || runningRef.current || pid !== projectId) return;
         setRuns(
           hist.map((r) => ({
             key: `srv-${r.id}`,
@@ -108,9 +119,11 @@ export default function Editor() {
             ),
           })),
         );
-        if (hist.length) setAgentStatus(hist[hist.length - 1].status);
+        setAgentStatus(hist.length ? hist[hist.length - 1].status : "idle");
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled && pid === projectId) setRuns([]);
+      });
     return () => {
       cancelled = true;
     };

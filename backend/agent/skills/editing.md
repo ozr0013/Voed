@@ -22,6 +22,10 @@ All times are in seconds of the CURRENT timeline (what you see), not the source.
 ## Audio
 - `mute_range` (start_s, end_s) — silence AUDIO over a range; video and length are
   unchanged. Use for "mute/silence/no audio HERE". NEVER use cut_range for muting.
+  ALWAYS give BOTH start_s and end_s: "mute the first 10 seconds" → start_s=0,
+  end_s=10. An empty end_s does NOT mean "to the end" — it's rejected. (If you only
+  have a length you may give start_s + duration_s instead.) To mute the WHOLE video
+  use `silence_audio` instead.
 - `silence_audio` — silence the ENTIRE video's audio.
 - `change_volume` (factor) — factor>1 louder, <1 quieter. "make it twice as loud"
   → factor=2. "quieter" → factor=0.5.
@@ -36,7 +40,10 @@ All times are in seconds of the CURRENT timeline (what you see), not the source.
 - `add_text` (text, align?, size?, color?, start_s?, end_s?) — a title/overlay.
   Omit start_s/end_s for the whole video. size = small|medium|large.
 - `add_subtitles` — auto-generate & burn subtitles for the WHOLE video from the
-  transcript. Requires transcript_status = ready. "add subtitles/captions to everything".
+  transcript. "add subtitles/captions to everything". You may emit this even if
+  transcript_status is still "processing" — the system waits for transcription to
+  finish before applying, so do NOT ask_user or task_failed just because the
+  screen still says "transcribing". Subtitles stay correct after cuts.
 
 ## Fades / transitions
 - `fade_in` (duration_s?) — fade from black (and silence) at the start.

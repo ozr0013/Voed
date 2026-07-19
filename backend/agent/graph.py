@@ -18,6 +18,7 @@ response. This preserves the existing /step + /verify contract with the frontend
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Any, Optional, TypedDict
 
@@ -33,6 +34,7 @@ from ..edits import engine
 from ..edits.engine import EditError
 from ..models import AgentRun, AgentStep, Project, utcnow
 from . import planner, verifier
+from .action_normalize import normalize_action
 from .schemas import Action
 
 # Actions that end a run without an edit + verification pass.
@@ -159,9 +161,15 @@ async def plan_node(state: AgentState) -> dict[str, Any]:
         if output is None:  # stream produced no parseable action
             raise RuntimeError("planner produced no output")
 
+        action = normalize_action(
+            output.action,
+            goal=state["goal"],
+            timeline_duration=project.timeline_duration_s,
+        )
+
         # JSON mode -> enum names become plain strings (stable across the JSON DB
         # column, the graph checkpoint serializer, and the frontend contract).
-        action_dict = output.action.model_dump(mode="json", exclude_none=True)
+        action_dict = action.model_dump(mode="json", exclude_none=True)
         step = AgentStep(
             run_id=run.id,
             step_index=n_steps,
@@ -219,19 +227,70 @@ async def terminal_node(state: AgentState) -> dict[str, Any]:
         db.close()
 
 
+async def _await_transcript(project_id: int) -> str:
+    """Block (async) until a project's word-level transcript is ready.
+
+    add_subtitles needs the transcript, which is produced by a background thread
+    after upload. Asking for subtitles right after uploading/cutting otherwise
+    raced that thread and failed with "no transcript yet". We kick transcription
+    off if it hasn't started and poll (with a fresh session so we see the worker's
+    commit) up to settings.subtitle_wait_s, streaming progress to the UI."""
+    from ..upload import ensure_transcription
+
+    write = _writer()
+    ensure_transcription(project_id)
+    deadline = asyncio.get_event_loop().time() + settings.subtitle_wait_s
+    while True:
+        db = SessionLocal()
+        try:
+            project = db.get(Project, project_id)
+            status = project.transcript_status if project else "error"
+            has_words = bool(project and project.transcript)
+        finally:
+            db.close()
+        if status == "ready" and has_words:
+            return "ready"
+        if status in ("ready", "error"):  # ready-but-empty (no speech) or failed
+            return status
+        if asyncio.get_event_loop().time() >= deadline:
+            return "timeout"
+        write({"type": "status", "text": "waiting for transcription…"})
+        await asyncio.sleep(1.0)
+
+
 async def execute_node(state: AgentState) -> dict[str, Any]:
     """Apply a real edit via the ffmpeg engine."""
+    # Subtitles need the transcript; wait for the background transcription to
+    # finish (or start it) before executing, instead of failing the race.
+    action_name = (state.get("action") or {}).get("name")
+    if action_name == "add_subtitles":
+        await _await_transcript(state["project_id"])
+
     db = SessionLocal()
     try:
+        run = db.get(AgentRun, state["run_id"])
         project = db.get(Project, state["project_id"])
         step = db.get(AgentStep, state["step_id"])
-        action = Action.model_validate(state["action"])
+        action = normalize_action(
+            Action.model_validate(state["action"]),
+            goal=state.get("goal") or (run.goal if run else ""),
+            timeline_duration=project.timeline_duration_s,
+        )
+        if step is not None:
+            normalized = action.model_dump(mode="json", exclude_none=True)
+            if normalized != (step.action or {}):
+                step.action = normalized
         try:
             result = engine.apply_action(db, project, action)
         except EditError as e:
             if step is not None:
                 step.verify_success = False
-                step.verify_observed = f"edit rejected: {e}"
+                # Phrased as an instruction so the next plan step (which reads this
+                # via last_verify) fixes the parameters instead of repeating them.
+                step.verify_observed = (
+                    f"Your last action ({action.name.value}) was REJECTED and NOT "
+                    f"applied: {e} Re-issue it with corrected parameters."
+                )
             db.commit()
             return {"status": "error", "message": str(e)}
 
@@ -304,7 +363,10 @@ def route_after_plan(state: AgentState) -> str:
 
 
 def route_after_execute(state: AgentState) -> str:
-    return "end" if state.get("status") == "error" else "verify"
+    # A rejected edit (EditError) is recoverable: loop back to plan so the model
+    # can fix the parameters using the rejection reason (fed in via last_verify),
+    # rather than ending the run. `plan_node`'s max_steps cap bounds the retries.
+    return "retry" if state.get("status") == "error" else "verify"
 
 
 # --------------------------------------------------------------------------- #
@@ -329,7 +391,7 @@ def _build():
     builder.add_conditional_edges(
         "execute",
         route_after_execute,
-        {"verify": "verify_gate", "end": END},
+        {"verify": "verify_gate", "retry": "loop_gate"},
     )
     builder.add_edge("verify_gate", "verify")
     builder.add_edge("verify", "loop_gate")

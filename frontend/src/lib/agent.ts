@@ -102,6 +102,10 @@ export async function runAgent(
   // Sub-second acknowledgment before any inference starts.
   speak(`On it. ${goal}`);
   let runId: number | null = null;
+  // A rejected edit (e.g. missing end_s) loops back to re-plan with the reason.
+  // Cap consecutive rejections so a persistently-confused model can't hang a demo.
+  let consecutiveErrors = 0;
+  const MAX_CONSECUTIVE_ERRORS = 2;
 
   for (let i = 0; i < MAX_STEPS; i++) {
     if (cb.shouldCancel()) {
@@ -164,13 +168,23 @@ export async function runAgent(
       return;
     }
     if (step.status === "error") {
+      consecutiveErrors += 1;
       cb.onStep({ index: idx, label: labelFor(step), status: "failed", observed: step.message });
-      await speak(`That didn't work: ${step.message}`);
-      return;
+      if (consecutiveErrors > MAX_CONSECUTIVE_ERRORS) {
+        cb.onStatus("failed");
+        await speak(`That didn't work: ${step.message}`);
+        return;
+      }
+      // Recoverable rejection: re-plan with the reason (sent back via the run
+      // context). Re-capture at the top of the loop and try again.
+      cb.onStatus("adjusting…");
+      await speak("Let me adjust that.");
+      continue;
     }
 
     // status === "acted": a real edit happened. Re-render the timeline, then
     // re-capture and verify against the expected result.
+    consecutiveErrors = 0;
     if (step.seek_to != null && cb.onSeek) cb.onSeek(step.seek_to);
     await cb.refetchProject();
     await sleep(400); // let the DOM repaint before the verification screenshot

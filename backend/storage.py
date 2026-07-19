@@ -5,6 +5,7 @@ relocatable.
 """
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from .config import settings
@@ -14,6 +15,18 @@ def project_dir(user_id: int, project_id: int) -> Path:
     p = settings.storage_path / str(user_id) / str(project_id)
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def project_path(user_id: int, project_id: int) -> Path:
+    """The project's storage dir WITHOUT creating it (for deletion/inspection)."""
+    return settings.storage_path / str(user_id) / str(project_id)
+
+
+def remove_project_dir(user_id: int, project_id: int) -> None:
+    """Delete a project's on-disk files (originals, renders, proxies, shots)."""
+    p = project_path(user_id, project_id)
+    if p.exists():
+        shutil.rmtree(p, ignore_errors=True)
 
 
 def tmp_dir() -> Path:

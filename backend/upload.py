@@ -117,6 +117,27 @@ def _process_upload(project_id: int, user_id: int, tmp_path: Path, ext: str) -> 
     ).start()
 
 
+def ensure_transcription(project_id: int) -> str:
+    """Start background transcription if it hasn't run yet. Idempotent: a no-op
+    while already processing or done. Returns the resulting transcript_status so
+    callers (e.g. the agent's add_subtitles) can decide whether to wait."""
+    db = SessionLocal()
+    try:
+        project = db.get(Project, project_id)
+        if project is None:
+            return "error"
+        if project.transcript_status in ("processing", "ready"):
+            return project.transcript_status
+        project.transcript_status = "processing"
+        db.commit()
+    finally:
+        db.close()
+    threading.Thread(
+        target=_transcribe_project, args=(project_id,), daemon=True
+    ).start()
+    return "processing"
+
+
 def _transcribe_project(project_id: int) -> None:
     """Word-level transcription of a project's audio via faster-whisper. Populates
     project.transcript (list of {start,end,word}) and flips transcript_status."""
@@ -247,8 +268,14 @@ def delete_project(
     project_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)
 ) -> dict:
     project = _owned(project_id, user, db)
+    # Break the project -> head EditVersion FK so the versions cascade can delete
+    # cleanly, then drop the row (clips, versions, and agent runs/steps cascade).
+    project.head_version_id = None
+    db.flush()
     db.delete(project)
     db.commit()
+    # Remove the on-disk files last: if the DB delete failed we keep them.
+    storage.remove_project_dir(user.id, project_id)
     return {"ok": True}
 
 
@@ -258,15 +285,8 @@ def transcribe(
 ) -> dict:
     """(Re)start word-level transcription in the background. Idempotent: no-op if
     already transcribing or done. Lets pending/failed videos self-heal on open."""
-    project = _owned(project_id, user, db)
-    if project.transcript_status in ("processing", "ready"):
-        return {"status": project.transcript_status}
-    project.transcript_status = "processing"
-    db.commit()
-    threading.Thread(
-        target=_transcribe_project, args=(project.id,), daemon=True
-    ).start()
-    return {"status": "processing"}
+    _owned(project_id, user, db)
+    return {"status": ensure_transcription(project_id)}
 
 
 # --------------------------------------------------------------------------- #

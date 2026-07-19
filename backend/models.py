@@ -115,6 +115,10 @@ class Project(Base):
         foreign_keys="EditVersion.project_id",
         order_by="EditVersion.version_index",
     )
+    runs: Mapped[list["AgentRun"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
 
 
 class Clip(Base):
@@ -171,6 +175,7 @@ class AgentRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    project: Mapped["Project"] = relationship(back_populates="runs")
     steps: Mapped[list["AgentStep"]] = relationship(
         back_populates="run",
         cascade="all, delete-orphan",

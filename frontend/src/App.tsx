@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { useAuth } from "./lib/auth";
 import AuthForm from "./pages/AuthForm";
 import Dashboard from "./pages/Dashboard";
@@ -11,6 +11,13 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     return <div className="p-8 text-sm text-white/50">Loading…</div>;
   }
   return user ? children : <Navigate to="/signin" replace />;
+}
+
+function EditorPage() {
+  const { id } = useParams();
+  // Remount when opening a different project so agent history / playback state
+  // from the previous video don't linger in the panel.
+  return <Editor key={id} />;
 }
 
 export default function App() {
@@ -35,7 +42,7 @@ export default function App() {
         path="/editor/:id"
         element={
           <RequireAuth>
-            <Editor />
+            <EditorPage />
           </RequireAuth>
         }
       />

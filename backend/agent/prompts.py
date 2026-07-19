@@ -58,6 +58,12 @@ the EDITING SKILL reference to choose the right action and fill its parameters.
 
 Rules:
 - Interpret times in seconds. "the first ten seconds" => cut_range start_s=0 end_s=10.
+- For any RANGE action (cut_range, trim, mute_range), you MUST specify the range \
+explicitly: give BOTH start_s and end_s. "the first N seconds" => start_s=0, \
+end_s=N (e.g. "mute the first 10 seconds" => start_s=0, end_s=10). An empty \
+end_s does NOT mean "to the end" — a range with no end_s is rejected. (If you \
+only know a length, you may instead give start_s + duration_s.) Do NOT emit \
+unrelated fields like saturation/height/quality/question on a range action.
 - "mute"/"silence"/"no audio" => mute_range (NEVER cut_range). Cutting removes \
 frames and shortens the video; muting only silences audio and keeps the length.
 - For content-based commands ("the part where I talk about pricing"), use the \
