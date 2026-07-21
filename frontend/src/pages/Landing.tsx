@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 /* Four-point sparkle ornament that sits on panel corners (Cimento signature). */
@@ -54,6 +55,117 @@ const FEATURES = [
   },
 ];
 
+/* --- environment detection (client-side only) --- */
+const IS_BROWSER = typeof window !== "undefined";
+// The public site is served from a real domain; a local install runs on
+// localhost. On localhost the user already has a backend, so we point them at
+// sign-in; on the public site we point them at the installer.
+const IS_LOCAL =
+  IS_BROWSER && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+const ORIGIN = IS_BROWSER ? window.location.origin : "https://voed.vercel.app";
+
+type OS = "windows" | "mac";
+function detectOS(): OS {
+  if (!IS_BROWSER) return "windows";
+  const ua = `${navigator.userAgent} ${navigator.platform}`.toLowerCase();
+  return /mac|iphone|ipad|ipod/.test(ua) ? "mac" : "windows";
+}
+
+const INSTALL = {
+  windows: {
+    label: "Windows",
+    shell: "PowerShell",
+    cmd: `irm ${ORIGIN}/install.ps1 | iex`,
+    script: "/install.ps1",
+  },
+  mac: {
+    label: "macOS",
+    shell: "Terminal",
+    cmd: `curl -fsSL ${ORIGIN}/install.sh | bash`,
+    script: "/install.sh",
+  },
+} as const;
+
+/* One-line install command with copy + raw-script download. */
+function InstallSection() {
+  const [os, setOs] = useState<OS>(detectOS());
+  const [copied, setCopied] = useState(false);
+  const active = INSTALL[os];
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(active.cmd);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard blocked — the command is still selectable on screen */
+    }
+  };
+
+  return (
+    <section id="install" className="border-x border-b border-coal px-5 py-12 sm:px-10 sm:py-14">
+      <div className="mb-6 flex items-center gap-3">
+        <Sparkle className="h-4 w-4 text-flame" />
+        <h2 className="font-display text-2xl font-black uppercase tracking-tight sm:text-3xl">
+          Install Voed
+        </h2>
+      </div>
+      <p className="mb-7 max-w-2xl text-[13px] leading-relaxed text-coal/65">
+        One command sets up everything — ffmpeg, Ollama, the AI models, and the
+        app — and launches Voed on your machine. It runs entirely locally; you
+        only need to do this once.
+      </p>
+
+      {/* OS switch */}
+      <div className="mb-5 inline-flex border border-coal">
+        {(Object.keys(INSTALL) as OS[]).map((key) => (
+          <button
+            key={key}
+            onClick={() => setOs(key)}
+            className={`px-5 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${
+              os === key ? "bg-coal text-paper" : "bg-paper text-coal hover:bg-paper2"
+            }`}
+          >
+            {INSTALL[key].label}
+          </button>
+        ))}
+      </div>
+
+      {/* command block */}
+      <Framed className="bg-coal">
+        <div className="flex items-center justify-between gap-4 px-4 py-2">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-paper/50">
+            Paste into {active.shell}
+          </span>
+          <button
+            onClick={copy}
+            className="border border-paper/30 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-paper transition-colors hover:bg-paper hover:text-coal"
+          >
+            {copied ? "Copied ✓" : "Copy"}
+          </button>
+        </div>
+        <pre className="overflow-x-auto border-t border-paper/15 px-4 py-4 text-left text-[13px] leading-relaxed text-flame">
+          <code>{active.cmd}</code>
+        </pre>
+      </Framed>
+
+      <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-[0.15em] text-coal/50">
+        <a href={active.script} download className="underline underline-offset-4 hover:text-coal">
+          Or download the {active.label} script
+        </a>
+        <span className="hidden sm:inline">·</span>
+        <span>Already installed?</span>
+        <a
+          href="http://localhost:5173"
+          className="border border-coal bg-paper px-3 py-1 font-bold text-coal shadow-hard transition-transform hover:-translate-x-[1px] hover:-translate-y-[1px]"
+        >
+          Launch app →
+        </a>
+      </div>
+    </section>
+  );
+}
+
 export default function Landing() {
   return (
     <div className="relative min-h-screen cursor-default select-none bg-paper font-mono text-coal">
@@ -72,9 +184,9 @@ export default function Landing() {
         <span>
           Runs 100% on your machine — nothing ever touches the cloud
         </span>
-        <Link to="/signup" className="hidden font-bold underline underline-offset-4 hover:opacity-70 sm:inline">
-          Get started →
-        </Link>
+        <a href="#install" className="hidden font-bold underline underline-offset-4 hover:opacity-70 sm:inline">
+          Install →
+        </a>
       </div>
 
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
@@ -142,13 +254,25 @@ export default function Landing() {
             className="rise mt-9 flex flex-wrap gap-4"
             style={{ animationDelay: "320ms" }}
           >
-            <Link
-              to="/signup"
-              className="group flex items-center gap-2 bg-flame px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-coal shadow-hard transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0_0_#17150f]"
-            >
-              Get started
-              <span className="transition-transform group-hover:translate-x-1">→</span>
-            </Link>
+            {/* On localhost the user has a backend → sign up. On the public
+                site → jump to the installer. */}
+            {IS_LOCAL ? (
+              <Link
+                to="/signup"
+                className="group flex items-center gap-2 bg-flame px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-coal shadow-hard transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0_0_#17150f]"
+              >
+                Get started
+                <span className="transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+            ) : (
+              <a
+                href="#install"
+                className="group flex items-center gap-2 bg-flame px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-coal shadow-hard transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0_0_#17150f]"
+              >
+                Install Voed
+                <span className="transition-transform group-hover:translate-x-1">↓</span>
+              </a>
+            )}
             <Link
               to="/signin"
               className="flex items-center border border-coal bg-paper px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-coal transition-colors hover:bg-paper2"
@@ -157,6 +281,9 @@ export default function Landing() {
             </Link>
           </div>
         </section>
+
+        {/* install / download front door */}
+        <InstallSection />
 
         {/* feature cards */}
         <section className="grid gap-0 border-x border-b border-coal sm:grid-cols-3">
