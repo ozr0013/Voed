@@ -1,5 +1,7 @@
 # Voed — edit video by talking
 
+Live Link: https://voed1.vercel.app/
+
 A voice-controlled video editing agent that runs **100% locally**. Sign in,
 upload a video, hold the mic button, and say things like *"cut the first ten
 seconds"* or *"remove all the silences."* A multimodal AI agent looks at a live
