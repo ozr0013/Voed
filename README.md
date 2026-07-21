@@ -2,14 +2,13 @@
 
 <div align="center">
 
-![header](https://capsule-render.vercel.app/api?type=waving&height=200&color=gradient&customColorList=12,20,6&section=header&text=%F0%9F%A5%87%201ST%20PLACE&fontSize=55&fontColor=ffffff&fontAlignY=38&desc=JustBuild%20Hackathon%20%E2%80%94%20Multimodal%20Track&descAlignY=58&descSize=22&animation=twinkling)
+![header](https://capsule-render.vercel.app/api?type=waving&height=200&color=gradient&customColorList=12,20,6&section=header&text=%F0%9F%A5%87%201ST%20PLACE&fontSize=55&fontColor=ffffff&fontAlignY=38&desc=JustBuild%20Hackathon&descAlignY=58&descSize=22&animation=twinkling)
 
 [![1st Place](https://img.shields.io/badge/%F0%9F%8F%86%20JustBuild%20Hackathon-1ST%20PLACE-FFD700?style=for-the-badge&labelColor=1a1a1a&logo=trophy&logoColor=FFD700)](https://voed1.vercel.app/)
-[![Track Winner](https://img.shields.io/badge/Multimodal%20Track-WINNER-FFD700?style=for-the-badge&labelColor=1a1a1a)](https://voed1.vercel.app/)
 
 <img width="412" height="416" alt="Voed logo" src="https://github.com/user-attachments/assets/4016393b-b76a-4682-ad2b-d802debbf48f" />
 
-[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=32&pause=1000&color=F75C7E&center=true&vCenter=true&width=600&lines=Voed+%F0%9F%8E%99%EF%B8%8F%E2%9C%82%EF%B8%8F;You+talk.+It+edits.;100%25+local.+0%25+cloud.;%F0%9F%A5%87+1st+Place+%E2%80%94+Multimodal+Track)](https://git.io/typing-svg)
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=32&pause=1000&color=F75C7E&center=true&vCenter=true&width=600&lines=Voed+%F0%9F%8E%99%EF%B8%8F%E2%9C%82%EF%B8%8F;You+talk.+It+edits.;100%25+local.+0%25+cloud.;%F0%9F%A5%87+1st+Place+%E2%80%94+JustBuild+Hackathon)](https://git.io/typing-svg)
 
 ![Status](https://img.shields.io/badge/status-shipped-brightgreen?style=for-the-badge&logo=checkmarx)
 ![Runs Locally](https://img.shields.io/badge/runs-100%25%20locally-blueviolet?style=for-the-badge&logo=ollama)
@@ -22,7 +21,7 @@ You talk, it edits. Hold the mic, say "cut the first ten seconds" or "remove all
 
 Under the hood, a multimodal model *looks at your screen*, figures out what you mean, runs the edit with real ffmpeg calls, checks the result against what you asked for, and tells you it's done. Out loud.
 
-We built this for the Multimodal Track and walked away with 1st place.
+We built this for the JustBuild Hackathon and walked away with 1st place.
 
 ## Why this isn't just "Whisper + ffmpeg"
 
@@ -139,6 +138,6 @@ One command. It checks your dependencies, pulls the model if it's missing, insta
 
 ![wave divider](https://capsule-render.vercel.app/api?type=waving&height=100&color=gradient&customColorList=6,11,20&section=footer&text=&fontSize=0)
 
-Built with 🎙️, ffmpeg, and way too much CPU-bound inference — **JustBuild Hackathon, Multimodal Track, 🥇 1st Place**
+Built with 🎙️, ffmpeg, and way too much CPU-bound inference — **JustBuild Hackathon, 🥇 1st Place**
 
 </div>
