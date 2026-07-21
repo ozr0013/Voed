@@ -1,8 +1,17 @@
-# Voed : 🥇 1st Place JustBuild Hackathon
+<div align="center">
 
 <img width="412" height="416" alt="Voed logo" src="https://github.com/user-attachments/assets/4016393b-b76a-4682-ad2b-d802debbf48f" />
 
-**Live demo:** https://voed1.vercel.app/
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=32&pause=1000&color=F75C7E&center=true&vCenter=true&width=600&lines=Voed+%F0%9F%8E%99%EF%B8%8F%E2%9C%82%EF%B8%8F;You+talk.+It+edits.;100%25+local.+0%25+cloud.;%F0%9F%A5%87+1st+Place+%E2%80%94+Multimodal+Track)](https://git.io/typing-svg)
+
+![Status](https://img.shields.io/badge/status-shipped-brightgreen?style=for-the-badge&logo=checkmarx)
+![Runs Locally](https://img.shields.io/badge/runs-100%25%20locally-blueviolet?style=for-the-badge&logo=ollama)
+![Eval Pass Rate](https://img.shields.io/badge/eval%20pass%20rate-100%25-success?style=for-the-badge&logo=target)
+[![Live Demo](https://img.shields.io/badge/live%20demo-voed1.vercel.app-orange?style=for-the-badge&logo=vercel)](https://voed1.vercel.app/)
+
+![wave divider](https://capsule-render.vercel.app/api?type=waving&height=120&color=gradient&customColorList=6,11,20&section=header&text=&fontSize=0)
+
+</div>
 
 You talk, it edits. Hold the mic, say "cut the first ten seconds" or "remove all the silences," and Voed actually does it — no timeline dragging, no keyboard shortcuts to memorize. Everything runs on your own machine. No cloud, no API keys, no internet required.
 
@@ -20,6 +29,24 @@ Lots of voice-to-action demos fake the "AI actually did something" part. Ours do
 4. **You get proof it worked** — spoken confirmation + the UI reflecting the new state, verified by a second screenshot pass.
 
 That loop — plan → act → re-check the screen → confirm — is the whole point of the project.
+
+<div align="center">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant You
+    participant Mic as 🎙️ Mic
+    participant Model as 🧠 Gemma (Ollama)
+    participant Editor as 🎬 ffmpeg / Timeline
+    You->>Mic: "cut the first ten seconds"
+    Mic->>Model: transcript + live screenshot
+    Model->>Editor: plan → cut_range
+    Editor-->>Model: new screenshot (re-check)
+    Model-->>You: 🔊 "Done — trimmed to 0:10"
+```
+
+</div>
 
 ## What's running under the hood
 
@@ -87,6 +114,8 @@ One command. It checks your dependencies, pulls the model if it's missing, insta
 
 ## Where we landed
 
+![progress](https://progress-bar.xyz/100/?title=Milestones%20shipped&width=500&color=6c5ce7)
+
 - [x] M1 — scaffold, health checks, FastAPI + Vite wiring
 - [x] M2 — auth + dashboard + upload
 - [x] M3 — editor page (static)
@@ -100,3 +129,11 @@ One command. It checks your dependencies, pulls the model if it's missing, insta
 **Evals:** 15 voice commands across cuts, trims, mute ranges, timeline seeks, crops, and rotations — 100% success rate, all on CPU. Full breakdown and known edge cases are in the Kaggle writeup.
 
 > **Why html2canvas and not html-to-image:** html-to-image round-trips through an SVG `<img>` that never fires `onload` in some automated Chromium builds, so it just hangs. html2canvas paints the DOM straight to a canvas and doesn't have that problem.
+
+<div align="center">
+
+![wave divider](https://capsule-render.vercel.app/api?type=waving&height=100&color=gradient&customColorList=6,11,20&section=footer&text=&fontSize=0)
+
+Built with 🎙️, ffmpeg, and way too much CPU-bound inference — **JustBuild Hackathon, Multimodal Track, 🥇 1st Place**
+
+</div>
