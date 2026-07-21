@@ -1,4 +1,4 @@
-# Voed : 🥇 1st Place Just Build Hackathon
+# Voed : 🥇 1st Place JustBuild Hackathon
 
 <img width="412" height="416" alt="Voed logo" src="https://github.com/user-attachments/assets/4016393b-b76a-4682-ad2b-d802debbf48f" />
 
