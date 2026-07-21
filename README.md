@@ -1,6 +1,11 @@
- JustBuild Hackathon, 🥇 1st Place
+# Voed 🎙️✂️
 
 <div align="center">
+
+![header](https://capsule-render.vercel.app/api?type=waving&height=200&color=gradient&customColorList=12,20,6&section=header&text=%F0%9F%A5%87%201ST%20PLACE&fontSize=55&fontColor=ffffff&fontAlignY=38&desc=JustBuild%20Hackathon%20%E2%80%94%20Multimodal%20Track&descAlignY=58&descSize=22&animation=twinkling)
+
+[![1st Place](https://img.shields.io/badge/%F0%9F%8F%86%20JustBuild%20Hackathon-1ST%20PLACE-FFD700?style=for-the-badge&labelColor=1a1a1a&logo=trophy&logoColor=FFD700)](https://voed1.vercel.app/)
+[![Track Winner](https://img.shields.io/badge/Multimodal%20Track-WINNER-FFD700?style=for-the-badge&labelColor=1a1a1a)](https://voed1.vercel.app/)
 
 <img width="412" height="416" alt="Voed logo" src="https://github.com/user-attachments/assets/4016393b-b76a-4682-ad2b-d802debbf48f" />
 
@@ -10,8 +15,6 @@
 ![Runs Locally](https://img.shields.io/badge/runs-100%25%20locally-blueviolet?style=for-the-badge&logo=ollama)
 ![Eval Pass Rate](https://img.shields.io/badge/eval%20pass%20rate-100%25-success?style=for-the-badge&logo=target)
 [![Live Demo](https://img.shields.io/badge/live%20demo-voed1.vercel.app-orange?style=for-the-badge&logo=vercel)](https://voed1.vercel.app/)
-
-![wave divider](https://capsule-render.vercel.app/api?type=waving&height=120&color=gradient&customColorList=6,11,20&section=header&text=&fontSize=0)
 
 </div>
 
