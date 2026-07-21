@@ -18,10 +18,12 @@ export default function MicButton({ disabled = false, hint, onTranscript, onErro
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const activeRef = useRef(false); // guards against double start/stop
+  const stopRequestedRef = useRef(false); // release that arrived before the recorder was ready
 
   const start = useCallback(async () => {
     if (disabled || activeRef.current) return;
     activeRef.current = true;
+    stopRequestedRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
@@ -33,6 +35,7 @@ export default function MicButton({ disabled = false, hint, onTranscript, onErro
         if (blob.size < 1200) {
           setState("idle");
           activeRef.current = false;
+          onError?.("Too short — hold the button (or Space) while you speak, then release.");
           return; // too short to be speech
         }
         setState("transcribing");
@@ -50,6 +53,9 @@ export default function MicButton({ disabled = false, hint, onTranscript, onErro
       recorderRef.current = mr;
       mr.start();
       setState("recording");
+      // If the user already released during getUserMedia, stop now so the
+      // release isn't lost (which would leave us recording forever).
+      if (stopRequestedRef.current) mr.stop();
     } catch {
       activeRef.current = false;
       setState("idle");
@@ -58,6 +64,7 @@ export default function MicButton({ disabled = false, hint, onTranscript, onErro
   }, [disabled, onTranscript, onError]);
 
   const stop = useCallback(() => {
+    stopRequestedRef.current = true; // honored by start() if the recorder isn't ready yet
     const mr = recorderRef.current;
     if (mr && mr.state === "recording") mr.stop();
   }, []);

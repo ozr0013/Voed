@@ -53,6 +53,9 @@ def _to_wav16k(src: Path) -> Path:
     out = Path(tempfile.mktemp(suffix=".wav"))
     subprocess.run(
         ["ffmpeg", "-y", "-v", "error", "-i", str(src),
+         # dynaudnorm lifts quiet/low-gain mic input so speech is audible to the
+         # model without clipping loud parts — big recall win on real mic audio.
+         "-af", "dynaudnorm=f=150:g=15",
          "-ar", "16000", "-ac", "1", str(out)],
         check=True, capture_output=True, timeout=120,
     )
@@ -65,7 +68,16 @@ def transcribe_path(path: str | Path, *, word_timestamps: bool = False) -> Trans
     wav = _to_wav16k(Path(path))
     try:
         segments, info = model.transcribe(
-            str(wav), word_timestamps=word_timestamps, vad_filter=False
+            str(wav),
+            word_timestamps=word_timestamps,
+            # Silero VAD strips non-speech so silent/near-silent audio returns
+            # EMPTY instead of a hallucinated subtitle credit ("Teksting av ...").
+            vad_filter=True,
+            vad_parameters={"min_silence_duration_ms": 300},
+            beam_size=5,                       # wider search = fewer missed/wrong words
+            temperature=0.0,                   # deterministic; far fewer hallucinations
+            condition_on_previous_text=False,  # don't carry a hallucination forward
+            no_speech_threshold=0.6,
         )
         text_parts: list[str] = []
         words: list[Word] = []

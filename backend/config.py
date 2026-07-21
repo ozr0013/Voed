@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     # Gemma 4 12B multimodal (Q4 by default), the project's core model. Override
     # with VOICECUT_MODEL to test on a lighter local model, e.g. gemma3:4b.
     model: str = "gemma4:12b"
-    whisper_model: str = "small"   # faster-whisper size for STT
-    whisper_compute: str = "int8"  # CPU-friendly; use "float16" on GPU
+    whisper_model: str = "large-v3"  # most accurate; catches noisy/accented real-mic speech
+    whisper_compute: str = "int8"    # CPU-friendly; use "float16" on GPU
     piper_voice: str = "en_US-lessac-medium"
     piper_dir: str = str(MODELS_DIR / "piper")
 
