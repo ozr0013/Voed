@@ -1,4 +1,4 @@
-# Voed 🎙️✂️
+# Voed - https://voed1.vercel.app/
 
 <div align="center">
 
