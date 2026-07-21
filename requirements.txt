@@ -14,6 +14,4 @@ numpy==2.2.1
 pillow==11.1.0
 python-dotenv==1.0.1
 websockets==15.0.1
-
-# Agent orchestration: plan -> act -> verify loop (model stays Gemma via Ollama)
 langgraph==1.2.9

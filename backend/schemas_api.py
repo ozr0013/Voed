@@ -77,6 +77,13 @@ class ProjectDetail(ProjectSummary):
                 not (m["end"] <= c.src_start_s or m["start"] >= c.src_end_s) for m in muted
             )
 
+        preview: str | None = None
+        if p.proxy_path or p.original_path:
+            # Bump ?v= on each edit so the browser reloads the proxy instead of
+            # serving a cached MP4 from the stable /media/preview path.
+            cache_key = p.head_version_id or int(p.updated_at.timestamp())
+            preview = f"/api/projects/{p.id}/media/preview?v={cache_key}"
+
         base.update(
             fps=p.fps,
             waveform=p.waveform,

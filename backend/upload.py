@@ -295,7 +295,8 @@ def get_media(
     path = storage.abs_path(rel)
     if not path.exists():
         raise HTTPException(status_code=404, detail="File missing")
-    return FileResponse(path)
+    headers = {"Cache-Control": "no-cache"} if asset == "preview" else None
+    return FileResponse(path, headers=headers)
 
 
 # --------------------------------------------------------------------------- #
