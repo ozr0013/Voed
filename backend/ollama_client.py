@@ -20,6 +20,7 @@ from typing import Any
 import httpx
 
 from .config import settings
+from .model_state import get_active_model
 
 
 class OllamaError(RuntimeError):
@@ -43,7 +44,7 @@ async def list_models() -> list[str]:
 
 
 async def has_model(tag: str | None = None) -> bool:
-    tag = tag or settings.model
+    tag = tag or get_active_model()
     try:
         models = await list_models()
     except httpx.HTTPError:
@@ -51,6 +52,37 @@ async def has_model(tag: str | None = None) -> bool:
     # Ollama reports tags with an implicit ":latest"; match loosely.
     wanted = tag if ":" in tag else f"{tag}:latest"
     return any(m == tag or m == wanted for m in models)
+
+
+async def pull_model(tag: str) -> AsyncIterator[dict[str, Any]]:
+    """Stream Ollama pull progress (newline-delimited JSON objects)."""
+    try:
+        async with httpx.AsyncClient(timeout=None) as client:
+            async with client.stream(
+                "POST",
+                f"{settings.ollama_url}/api/pull",
+                json={"name": tag, "stream": True},
+            ) as r:
+                r.raise_for_status()
+                async for line in r.aiter_lines():
+                    if not line.strip():
+                        continue
+                    yield json.loads(line)
+    except httpx.HTTPError as e:
+        raise OllamaError(f"Ollama pull failed: {e}") from e
+
+
+async def delete_model(tag: str) -> None:
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            r = await client.request(
+                "DELETE",
+                f"{settings.ollama_url}/api/delete",
+                json={"name": tag},
+            )
+            r.raise_for_status()
+    except httpx.HTTPError as e:
+        raise OllamaError(f"Ollama delete failed: {e}") from e
 
 
 def _encode_image(image_bytes: bytes) -> str:
@@ -73,7 +105,7 @@ async def generate(
     prompt cache. Dynamic content goes in `prompt` and `images`.
     """
     payload: dict[str, Any] = {
-        "model": settings.model,
+        "model": get_active_model(),
         "system": system,
         "prompt": prompt,
         "stream": False,
@@ -113,7 +145,7 @@ async def generate_stream(
     a final `done: true`. Used to surface the planner's reasoning live.
     """
     payload: dict[str, Any] = {
-        "model": settings.model,
+        "model": get_active_model(),
         "system": system,
         "prompt": prompt,
         "stream": True,

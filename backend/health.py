@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 
 from . import ollama_client
 from .config import settings
+from .model_state import get_active_model
 
 
 @dataclass
@@ -65,22 +66,22 @@ async def check_ollama() -> Check:
 
 
 async def check_model() -> Check:
+    active = get_active_model()
     if not await ollama_client.is_up():
         return Check(
             "model", False, "cannot verify — ollama not reachable",
-            fix=f"Start Ollama, then run: ollama pull {settings.model}",
+            fix=f"Start Ollama, then download {active} from the Models panel.",
         )
-    if await ollama_client.has_model():
-        return Check("model", True, f"{settings.model} present")
+    if await ollama_client.has_model(active):
+        return Check("model", True, f"{active} present")
     try:
         available = ", ".join(await ollama_client.list_models()) or "none"
     except Exception:  # noqa: BLE001
         available = "unknown"
     return Check(
         "model", False,
-        f"{settings.model} not pulled (available: {available})",
-        fix=f"Run: ollama pull {settings.model}  "
-            f"(or set VOICECUT_MODEL to a local multimodal tag such as gemma3:4b)",
+        f"{active} not pulled (available: {available})",
+        fix=f"Open the Models panel and download {active}, or select another installed tag.",
     )
 
 
@@ -118,6 +119,6 @@ async def full_report() -> dict:
     ]
     return {
         "ok": all(c.ok for c in checks),
-        "model": settings.model,
+        "model": get_active_model(),
         "checks": [asdict(c) for c in checks],
     }

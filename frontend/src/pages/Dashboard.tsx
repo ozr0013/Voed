@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UploadDropzone from "../components/UploadDropzone";
+import ModelManager from "../components/ModelManager";
+import SystemStatus from "../components/SystemStatus";
 import { api, type ProjectSummary } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
@@ -159,6 +161,11 @@ export default function Dashboard() {
             <Equalizer />
           </div>
         </section>
+
+        <div className="my-8 grid gap-5 lg:grid-cols-2">
+          <SystemStatus />
+          <ModelManager />
+        </div>
 
         <div className="my-8">
           <UploadDropzone onDone={(id) => nav(`/editor/${id}`)} />

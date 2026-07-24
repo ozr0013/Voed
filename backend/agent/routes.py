@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from .. import storage
 from ..auth import current_user
-from ..config import settings
+from ..model_state import get_active_model
 from ..db import get_db
 from ..models import AgentRun, Project, User
 from . import graph as agent_graph
@@ -72,7 +72,7 @@ async def plan_once(
         raise HTTPException(status_code=502, detail=f"Planner failed: {e}") from e
 
     return {
-        "model": settings.model,
+        "model": get_active_model(),
         "planner_latency_ms": latency_ms,
         "screenshot_url": f"/api/agent/shot?path={rel}",
         "thought": output.thought,
@@ -88,7 +88,7 @@ def _step_response(run_id: int, vals: dict) -> dict:
         "run_id": run_id,
         "step_id": vals.get("step_id"),
         "step_index": vals.get("step_index"),
-        "model": settings.model,
+        "model": get_active_model(),
         "thought": vals.get("thought", ""),
         "plan": vals.get("plan", []),
         "action": vals.get("action") or {},

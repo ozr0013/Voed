@@ -15,6 +15,33 @@ export interface HealthReport {
   checks: HealthCheck[];
 }
 
+export interface ModelCatalogEntry {
+  tag: string;
+  label: string;
+  size_gb: number;
+  context: string;
+  modalities: string;
+  tier: string;
+  notes: string;
+  installed: boolean;
+  active: boolean;
+}
+
+export interface ModelsReport {
+  active: string;
+  ollama_up: boolean;
+  catalog: ModelCatalogEntry[];
+  installed: string[];
+}
+
+export interface ModelPullEvent {
+  status?: string;
+  digest?: string;
+  total?: number;
+  completed?: number;
+  error?: string;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -147,6 +174,64 @@ export interface AgentRunHistory {
 export const api = {
   health: () => req<HealthReport>("/api/health"),
   ping: () => req<{ ok: boolean }>("/api/ping"),
+
+  models: () => req<ModelsReport>("/api/models"),
+  selectModel: (tag: string) =>
+    req<{ ok: boolean; active: string }>("/api/models/select", {
+      method: "POST",
+      body: JSON.stringify({ tag }),
+    }),
+  deleteModel: (tag: string) =>
+    req<{ ok: boolean; deleted: string }>(`/api/models/${encodeURIComponent(tag)}`, {
+      method: "DELETE",
+    }),
+  async pullModel(
+    tag: string,
+    onProgress?: (event: ModelPullEvent) => void,
+  ): Promise<void> {
+    const res = await fetch("/api/models/pull", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag }),
+    });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const body = await res.json();
+        detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      } catch {
+        /* non-JSON */
+      }
+      throw new ApiError(res.status, detail);
+    }
+    const reader = res.body?.getReader();
+    if (!reader) throw new ApiError(500, "No response body");
+    const decoder = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const event = JSON.parse(line) as ModelPullEvent;
+        onProgress?.(event);
+        if (event.status === "error" || event.error) {
+          throw new ApiError(502, event.error ?? "Download failed");
+        }
+      }
+    }
+    if (buf.trim()) {
+      const event = JSON.parse(buf) as ModelPullEvent;
+      onProgress?.(event);
+      if (event.status === "error" || event.error) {
+        throw new ApiError(502, event.error ?? "Download failed");
+      }
+    }
+  },
 
   // auth
   me: () => req<User>("/api/auth/me"),
