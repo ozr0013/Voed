@@ -33,3 +33,7 @@ Thumbs.db
 # Model / media scratch
 *.wav.tmp
 tmp/
+
+# Eval runs: keep only deliberate baselines
+evals/results/*
+!evals/results/baseline-*.json
