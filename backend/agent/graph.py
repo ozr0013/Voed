@@ -234,6 +234,14 @@ async def execute_node(state: AgentState) -> dict[str, Any]:
                 step.verify_observed = f"edit rejected: {e}"
             db.commit()
             return {"status": "error", "message": str(e)}
+        except Exception as e:  # noqa: BLE001 — e.g. an ffmpeg render failure; don't kill the run
+            db.rollback()  # drop any half-applied project state (effects are set before render)
+            step = db.get(AgentStep, state["step_id"])
+            if step is not None:
+                step.verify_success = False
+                step.verify_observed = "edit failed to render"
+            db.commit()
+            return {"status": "error", "message": "That edit failed to render."}
 
         db.commit()
         return {

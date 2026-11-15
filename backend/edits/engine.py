@@ -415,6 +415,20 @@ def _aspect_crop_box(width: int, height: int, aspect: str) -> tuple[int, int, in
     return w, h, max(0, (ow - w) // 2), max(0, (oh - h) // 2)
 
 
+def _frame_size_before_crop(project: Project) -> tuple[int, int]:
+    """Frame (w, h) a new crop will see: source size after the other geometry effects, in
+    list order. Any existing crop is excluded because `_set_effect` replaces it."""
+    w, h = int(project.width or 0), int(project.height or 0)
+    for e in project.effects or []:
+        t = e.get("type")
+        if t in ("scale", "resize") and h:
+            nh = int(e.get("height", h))
+            w, h = int(round(w * nh / h / 2)) * 2, nh
+        elif t == "rotate" and int(e.get("degrees", 90)) % 180 == 90:
+            w, h = h, w
+    return w, h
+
+
 def _exec_crop(db, project, action):
     aspect = action.aspect.value if hasattr(action.aspect, "value") else action.aspect
     if aspect:
@@ -425,8 +439,15 @@ def _exec_crop(db, project, action):
         label, summary = f"crop {aspect}", f"Cropped the frame to {aspect} aspect."
     elif action.w is not None and action.h is not None:
         w, h = int(action.w) - int(action.w) % 2, int(action.h) - int(action.h) % 2
-        eff = {"type": "crop", "w": w, "h": h,
-               "x": int(action.x or 0), "y": int(action.y or 0)}
+        x, y = int(action.x or 0), int(action.y or 0)
+        if w <= 0 or h <= 0:
+            raise EditError("Crop width and height must be positive.")
+        fw, fh = _frame_size_before_crop(project)
+        if fw and fh and (x < 0 or y < 0 or x + w > fw or y + h > fh):
+            raise EditError(
+                f"A {w}x{h} crop at ({x},{y}) doesn't fit inside the {fw}x{fh} frame."
+            )
+        eff = {"type": "crop", "w": w, "h": h, "x": x, "y": y}
         label, summary = "crop", "Cropped the frame."
     else:
         raise EditError("Crop needs an aspect (square/portrait/landscape) or explicit w and h.")
