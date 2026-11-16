@@ -94,6 +94,7 @@ def aggregate(results: list[dict[str, Any]]) -> dict[str, Any]:
             "forbidden_hits": sum(1 for r in rows if r.get("forbidden_hit")),
             "engine_crashes": sum(1 for r in rows if r.get("engine_crash")),
             "infra_errors": sum(1 for r in rows if r.get("infra_error")),
+            "timeouts": sum(1 for r in rows if r.get("timed_out")),
         }
 
     by_cat: dict[str, list[dict]] = defaultdict(list)

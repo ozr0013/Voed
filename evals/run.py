@@ -24,6 +24,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from . import harness  # noqa: F401  (must come first: redirects DB/storage to a temp dir)
 from .harness import (SessionLocal, Snapshot, make_project, render_screenshot, resolve,
                       run_assertions)
@@ -56,7 +58,12 @@ class OllamaAgent:
                     first_call=(step == 0), completed_steps=completed, last_verify=None,
                 )
                 break
-            except ollama_client.OllamaError as e:  # transport: Ollama down/restarting, not the model's fault
+            except ollama_client.OllamaError as e:
+                if isinstance(e.__cause__, httpx.TimeoutException):
+                    # Too slow for the request timeout. This is a REAL failure (the app would hit the
+                    # same ceiling), not infra flakiness, so it is scored, not excluded.
+                    return {"timeout": f"no response within the {ollama_client.generate.__kwdefaults__['timeout']:.0f}s request timeout"}
+                # otherwise transport: Ollama down/restarting, not the model's fault
                 if attempt == 2:
                     return {"infra": f"{type(e).__name__}: {str(e)[:160]}"}
                 await asyncio.sleep(5 * (attempt + 1))
@@ -172,6 +179,10 @@ async def run_planner_case(case: dict, agent, shot_mode: str, max_steps: int) ->
             shot = render_screenshot(project, 0.0, blank=(shot_mode == "blank"))
             r = await agent.next(project=project, goal=case["goal"], screenshot=shot,
                                  step=i, completed=completed)
+            if "timeout" in r:
+                row.update(timed_out=True, outcome_pass=False, action_ok=False, schema_valid=None,
+                           notes=[f"TIMEOUT (counted as a failure): {r['timeout']}"])
+                return row
             if "infra" in r:
                 row.update(infra_error=r["infra"], outcome_pass=None, action_ok=None, schema_valid=None,
                            notes=[f"INFRA ERROR (excluded from rates): {r['infra']}"])
@@ -246,7 +257,7 @@ def print_summary(agg: dict, results: list[dict], suite: str) -> None:
     o = agg["overall"]
     if o["schema"]["n"]:
         print(f"schema-valid: {_pct(o['schema'])}   forbidden-action hits: {o['forbidden_hits']}   "
-              f"engine crashes: {o['engine_crashes']}   infra errors (excluded): {o['infra_errors']}   latency p95: {o['latency_ms_p95']}")
+              f"engine crashes: {o['engine_crashes']}   timeouts (failures): {o['timeouts']}   infra errors (excluded): {o['infra_errors']}   latency p95: {o['latency_ms_p95']}")
     bad = [r for r in results if not r.get("infra_error") and (not r.get("outcome_pass") or r.get("action_ok") is False)]
     if bad:
         print("\nFailures / action mismatches:")
@@ -275,7 +286,10 @@ async def main() -> int:
     ap.add_argument("--model", help="Ollama tag to evaluate (default: the app's active model)")
     ap.add_argument("--screenshot", choices=["synthetic", "blank"], default="synthetic",
                     help="'blank' ablates the screenshot to measure how much the model relies on it")
-    ap.add_argument("--only", help="run only case ids containing this substring")
+    ap.add_argument("--only", help="run only case ids containing any of these comma-separated substrings")
+    ap.add_argument("--timeout", type=float, default=120.0,
+                    help="per-call Ollama timeout in seconds (120 = the app's own; raise it to separate "
+                         "slow-but-correct from wrong)")
     ap.add_argument("--max-steps", type=int, default=5, help="step cap for multi-step cases")
     ap.add_argument("--out", default=str(HERE / "results"), help="directory for the results JSON")
     ap.add_argument("--fail-under", type=float, default=None,
@@ -283,7 +297,7 @@ async def main() -> int:
     args = ap.parse_args()
 
     cases = json.loads((HERE / "cases.json").read_text())
-    pick = lambda xs: [c for c in xs if not args.only or args.only in c["id"]]  # noqa: E731
+    pick = lambda xs: [c for c in xs if not args.only or any(o in c["id"] for o in args.only.split(","))]  # noqa: E731
 
     suites = ["exec", "planner"] if args.suite == "all" else [args.suite]
     if args.suite == "selftest":
@@ -295,6 +309,7 @@ async def main() -> int:
     use_llm = "planner" in suites and args.agent == "ollama"
     model = args.model or ollama_client.get_active_model()
     if use_llm:
+        ollama_client.generate.__kwdefaults__["timeout"] = args.timeout
         if args.model:
             ollama_client.get_active_model = lambda: args.model  # evals pin the model explicitly
         if not await ollama_client.is_up():
@@ -330,7 +345,7 @@ async def main() -> int:
     path.write_text(json.dumps({
         "meta": {"timestamp": stamp, "git": _git_rev(), "agent": args.agent,
                  "model": model if use_llm else None, "screenshot": args.screenshot,
-                 "suites": suites, "only": args.only},
+                 "suites": suites, "only": args.only, "timeout_s": args.timeout},
         "summary": summary, "results": all_results}, indent=2))
     print(f"\nresults -> {path}")
 

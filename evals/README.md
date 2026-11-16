@@ -61,6 +61,20 @@ Append to `cases.json`. Planner case = `goal`, `gold` (reference solution, used 
 `all_of` for multi-step), and `assert` (oracle list). Then run `selftest` and `--agent gold`: a new case
 must be rejected by the no-op agent and passed by the gold agent before it's worth trusting.
 
+## Gotchas when running against Ollama
+
+- **Thinking models vs `planner_max_tokens`.** The app caps generation at 250 tokens. A model that
+  "thinks" (e.g. `gemma4:12b`, capability `thinking`) spends part of that budget on reasoning, hits
+  `done_reason=length`, and returns empty or truncated JSON. On one machine this made the default
+  config score 37% (16/43 schema-valid) while the same model finished cleanly at 1500 tokens. If
+  `schema-valid` is far below 100%, check this before blaming the model:
+  `VOICECUT_PLANNER_MAX_TOKENS=1500 python -m evals.run --suite planner --model <tag>`.
+- **Infra errors are not model failures.** If Ollama drops mid-run, transport errors are retried 3x
+  and then excluded from every rate (reported as `infra errors (excluded)`).
+- **Run on an idle machine, one model at a time.** CPU inference is slow (12B: ~20-30 s per call), and
+  concurrent runs distort latency numbers.
+- A model that scores *better* with `--screenshot blank` is not using the image.
+
 ## Limitations (read before quoting numbers)
 
 - **Synthetic screenshot.** Headless runs can't use the app's html2canvas capture, so
