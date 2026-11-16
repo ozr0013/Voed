@@ -64,11 +64,11 @@ must be rejected by the no-op agent and passed by the gold agent before it's wor
 ## Gotchas when running against Ollama
 
 - **Thinking models vs `planner_max_tokens`.** The app caps generation at 250 tokens. A model that
-  "thinks" (e.g. `gemma4:12b`, capability `thinking`) spends part of that budget on reasoning, hits
-  `done_reason=length`, and returns empty or truncated JSON. On one machine this made the default
-  config score 37% (16/43 schema-valid) while the same model finished cleanly at 1500 tokens. If
-  `schema-valid` is far below 100%, check this before blaming the model:
-  `VOICECUT_PLANNER_MAX_TOKENS=1500 python -m evals.run --suite planner --model <tag>`.
+  "thinks" (e.g. `gemma4:12b`, capability `thinking`) spends that budget on hidden reasoning, hits
+  `done_reason=length`, and returns empty or truncated JSON. Before the app set `think=false` by
+  default, this made `gemma4:12b` score 37% (16/43 schema-valid) at the default config, versus clean
+  output at 1500 tokens. The app now sends `think: false` (`VOICECUT_THINK`); if you turn it back on,
+  also set `VOICECUT_PLANNER_MAX_TOKENS=1500`. If `schema-valid` is far below 100%, check this first.
 - **Infra errors are not model failures.** If Ollama drops mid-run, transport errors are retried 3x
   and then excluded from every rate (reported as `infra errors (excluded)`).
 - **Run on an idle machine, one model at a time.** CPU inference is slow (12B: ~20-30 s per call), and

@@ -109,6 +109,7 @@ async def generate(
         "system": system,
         "prompt": prompt,
         "stream": False,
+        "think": settings.think,
         "options": {
             "temperature": temperature,
             "num_predict": max_tokens,
@@ -149,6 +150,7 @@ async def generate_stream(
         "system": system,
         "prompt": prompt,
         "stream": True,
+        "think": settings.think,
         "options": {
             "temperature": temperature,
             "num_predict": max_tokens,

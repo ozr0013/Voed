@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     # --- Agent loop ---
     max_steps: int = 12
     planner_max_tokens: int = 250
+    # Thinking models (e.g. gemma4) spend num_predict tokens on hidden reasoning; at the 250-token
+    # cap that truncates the JSON (done_reason=length) and most calls fail to parse. The planner
+    # already returns a `thought` field, so reasoning is off by default. If you enable this, also
+    # raise planner_max_tokens (VOICECUT_PLANNER_MAX_TOKENS), e.g. to 1500.
+    think: bool = False
     verifier_max_tokens: int = 60
 
     @property
